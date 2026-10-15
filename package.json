@@ -1,0 +1,10 @@
+{
+  "name": "budget-app",
+  "private": true,
+  "type": "module",
+  "description": "Household budget PWA: card-cycle aware 'left to spend', offline-first, syncs through your own Google Sheet.",
+  "scripts": {
+    "test": "node --test",
+    "serve": "node tools/serve.mjs"
+  }
+}

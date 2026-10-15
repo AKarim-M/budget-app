@@ -1,0 +1,10 @@
+# This repo is PUBLIC. Personal data must never be committed.
+local/
+*.local.json
+*.local.test.js
+*export*.json
+budget_tracker*
+*backup*
+*denylist*
+.env*
+node_modules/
