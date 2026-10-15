@@ -62,6 +62,7 @@ try {
   await A.act(`const s = ${SHEET};
     __t.fill(__t.field('Web app link', s), ${J(gas.execUrl)});
     __t.fill(__t.field('Sync code', s), ${J(gas.secret)});
+    __t.fill(__t.field('Your name on this device', s), 'Alex');
     __t.btn('Connect', s).click()`);
   await A.waitFor(`!${SHEET}.open`, 15000);
   check('device A connects to the Sheet from the setup screen', true);

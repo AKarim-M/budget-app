@@ -337,7 +337,7 @@ function buildWarnings(idx, today, C, bills, forecast, timeline) {
   for (const d of timeline.days) {
     if (d.endCents < 0) {
       add('negative_balance', 'danger', d.date, null, { endCents: d.endCents });
-    } else if (d.worstCents < 0 && d.inCents > 0) {
+    } else if (d.outCents > 0 && d.inCents > 0 && d.worstCents < 0) {
       const cardPayment = d.rows.some((r) => r.kind === 'card-payment' || r.kind === 'bill-rest');
       add('needs_pay_first', 'warn', d.date, null, { worstCents: d.worstCents, cardPayment });
     }

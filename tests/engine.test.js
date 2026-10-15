@@ -248,6 +248,21 @@ test('on a payday money in comes before money out, with a pay-first warning', ()
   assert.ok(s.warnings.some((w) => w.code === 'needs_pay_first' && w.date === '2026-10-20'));
 });
 
+test('a payday with no payment never says to wait for the salary, even if the bank starts it below zero', () => {
+  const h = household({ bankCents: 0 });
+  h.spend('2026-10-15', 50000, 'cash'); // the bank is ₱500 below zero today
+  const s = compute(h.records, { today: '2026-10-15' });
+  assert.deepEqual(s.warnings.filter((w) => w.code === 'needs_pay_first').map((w) => w.date), []);
+});
+
+test('a payment on a payday still says to wait for the salary when the bank starts below zero', () => {
+  const h = household({ bankCents: 0 });
+  h.spend('2026-10-15', 50000, 'cash');
+  h.planned('2026-10-20', 300000);
+  const s = compute(h.records, { today: '2026-10-15' });
+  assert.deepEqual(s.warnings.filter((w) => w.code === 'needs_pay_first').map((w) => w.date), ['2026-10-20']);
+});
+
 test('a day that ends below zero is flagged', () => {
   const h = household({ bankCents: 0 });
   h.planned('2026-10-18', 50000);

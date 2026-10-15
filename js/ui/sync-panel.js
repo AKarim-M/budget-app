@@ -46,6 +46,8 @@ export function openConnect(app) {
   openSheet('Connect to your Google Sheet', (body, close) => {
     const url = textInput({ placeholder: 'https://script.google.com/macros/s/…/exec', autocomplete: 'off', spellcheck: 'false' });
     const secret = textInput({ placeholder: 'Sync code', autocomplete: 'off', spellcheck: 'false' });
+    const needsName = !(app.store.device.get().userName ?? '').trim();
+    const name = textInput({ maxlength: 40, placeholder: 'e.g. Alex' });
     const local = hasLocalData(app);
     const mode = segmented('sync-mode', [['merge', 'Keep this device\'s entries and add them'], ['replace', 'Replace with the Sheet\'s data']], 'merge');
     mode.el.style.gridTemplateColumns = '1fr';
@@ -55,6 +57,13 @@ export function openConnect(app) {
       onsubmit: async (e) => {
         e.preventDefault();
         clearErrors(form);
+        if (needsName) {
+          if (!name.value.trim()) {
+            showError(name, 'Enter a name.');
+            return;
+          }
+          app.store.device.set({ userName: name.value.trim() });
+        }
         submit.disabled = true;
         submit.textContent = 'Connecting…';
         const r = await app.sync.connect({ url: url.value, secret: secret.value, mode: local ? mode.value() : 'merge' });
@@ -71,6 +80,7 @@ export function openConnect(app) {
     h('p', { class: 'section-note' }, 'From your Google Sheet setup: the web app link (ends in /exec) and the sync code. Other devices can then join by scanning a QR code.'),
     field('Web app link', url),
     field('Sync code', secret),
+    needsName ? field('Your name on this device', name, { hint: 'Shown next to the items you log.' }) : null,
     local ? field('This device already has entries', mode.el) : null,
     submit);
     body.append(form);
