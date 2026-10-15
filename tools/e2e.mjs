@@ -161,10 +161,49 @@ async function run(label, S) {
   }
 }
 
+let serverOpen = true;
+function stopServer() {
+  if (!serverOpen) return;
+  serverOpen = false;
+  server.closeAllConnections();
+  server.close();
+}
+
+// Install and offline: the app must be installable, and must still open with the server gone.
+async function offlineCheck() {
+  const page = await openPage(chrome.port);
+  const problems = [];
+  const url = `${origin}?demo=1&today=2026-10-15&sw=1`;
+  try {
+    await page.goto(url);
+    await page.eval(HELPERS);
+    await page.waitFor('navigator.serviceWorker.controller', 15000);
+    const errors = await page.installabilityErrors();
+    if (errors.length) problems.push(`not installable: ${errors.map((e) => e.errorId).join(', ')}`);
+    await page.waitFor("document.getElementById('tab-settings').textContent.includes('works offline')", 8000);
+    stopServer();
+    await page.goto(url);
+    await page.eval(HELPERS);
+    await page.waitFor("__t.text('#lts-value') === '₱5,778.50'", 10000);
+    if (page.errors.length) problems.push(`JavaScript errors: ${page.errors.join(' | ')}`);
+  } catch (err) {
+    problems.push(`stopped: ${err.message}`);
+  } finally {
+    page.close();
+  }
+  if (problems.length) {
+    failures += 1;
+    console.log(`✗ install and offline\n  - ${problems.join('\n  - ')}`);
+  } else {
+    console.log('✓ install and offline: installable, and opens with the right numbers with the server stopped');
+  }
+}
+
 try {
   for (const [label, scenario] of scenarios) await run(label, scenario);
+  await offlineCheck();
 } finally {
   await chrome.close();
-  server.close();
+  stopServer();
 }
 if (failures) process.exit(1);

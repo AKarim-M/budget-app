@@ -15,6 +15,7 @@ import { renderWizard } from './ui/wizard.js';
 import { initSheet } from './ui/overlay.js';
 import { openBreakdown, openBankCheck } from './ui/actions.js';
 import { longDate } from './ui/format.js';
+import { initPwa } from './pwa.js';
 
 const ROUTES = ['home', 'plan', 'spending', 'settings'];
 const STORAGE_KEYS = ['hb1.db', 'hb1.device', 'hb1.sync'];
@@ -52,6 +53,7 @@ async function main() {
   initSheet();
   showBanner();
   applyTheme();
+  initPwa(app);
 
   const views = {
     home: mountHome(byId('tab-home'), app),

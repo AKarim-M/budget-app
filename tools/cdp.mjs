@@ -79,6 +79,10 @@ export async function openPage(port, { width = 412, height = 915, dark = false }
   const page = {
     errors,
     setDark,
+    async installabilityErrors() {
+      const r = await send('Page.getInstallabilityErrors');
+      return r.installabilityErrors ?? [];
+    },
     async setViewport(w, h, mobile = true) {
       await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 2, mobile });
       width = w;

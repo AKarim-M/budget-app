@@ -8,6 +8,7 @@ import { formatInput } from '../money.js';
 import { isYMD, maxYMD } from '../dates.js';
 import { payEntryAt } from '../cycles.js';
 import { uuid } from '../records.js';
+import { installApp } from '../pwa.js';
 
 const PALETTE = ['#7c4d3a', '#2b5b84', '#6d4c7d', '#b45309', '#2d6a4f', '#c2593f', '#52606d'];
 const THEMES = { light: 'Warm paper', dim: 'Soft matte (dim)', auto: 'Same as this phone' };
@@ -274,9 +275,16 @@ export function mountSettings(el, app) {
     update(snap) {
       const dev = app.store.device.get();
       const s = snap.settings;
+      const pwa = app.pwa ?? {};
       fill(device,
         setting('Your name', dev.userName || 'Not set', smallBtn('Edit', () => editName(app))),
-        setting('Theme', THEMES[dev.theme ?? 'auto'], smallBtn('Change', () => editTheme(app))));
+        setting('Theme', THEMES[dev.theme ?? 'auto'], smallBtn('Change', () => editTheme(app))),
+        pwa.installPrompt
+          ? setting('Install on this device', 'Adds the app to your home screen. It also works offline.', smallBtn('Install', () => installApp(app)))
+          : null,
+        setting('App version', pwa.version
+          ? `${pwa.version} · works offline${pwa.persisted ? ' · data kept by the browser' : ''}`
+          : pwa.active ? 'Getting ready for offline use…' : 'Offline mode starts once the app is published'));
 
       const pay = payEntryAt(snap.today, s.paySchedule) ?? s.paySchedule[s.paySchedule.length - 1];
       fill(money,

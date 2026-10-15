@@ -468,3 +468,24 @@ input[aria-invalid="true"] { border-color: var(--danger); }
 .toast-action { background: none; border: none; color: var(--primary-bg); font-weight: 800; padding: 4px 6px; }
 [data-theme="dim"] .toast-action { color: #1e5a3f; }
 .noscript { padding: 24px; text-align: center; }
+
+/* ---------- new version bar ---------- */
+.update-bar {
+  position: fixed;
+  left: 50%;
+  top: calc(env(safe-area-inset-top) + 10px);
+  transform: translateX(-50%);
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100% - 32px);
+  background: var(--primary);
+  color: #fff;
+  border-radius: 12px;
+  padding: 8px 10px 8px 14px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+[data-theme="dim"] .update-bar { color: #102016; }

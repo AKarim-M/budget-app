@@ -1,0 +1,7 @@
+#!/bin/sh
+# Blocks a push to GitHub if tests fail, anything private would be published,
+# or app files changed without a new VERSION in sw.js.
+node tools/release-check.mjs || {
+  echo "Push blocked. Fix the problems above, then push again."
+  exit 1
+}
