@@ -3,7 +3,7 @@ import { newRecord } from '../../js/records.js';
 
 export function household({
   start = '2026-10-15', bankCents = 0, payCents = 1000000, weekday = 2,
-  cutoffDay = 15, dueDay = 7, installmentCents = 0, openingBills = [],
+  cutoffDay = 15, dueDay = 7, installmentCents = 0, openingBills = [], recurring = [],
 } = {}) {
   let seq = 0;
   const stamp = (date) => {
@@ -24,6 +24,7 @@ export function household({
     cutoffDay,
     dueDay,
     installments: installmentCents ? [{ id: 'i1', label: 'Installment', amountCents: installmentCents }] : [],
+    ...(recurring.length ? { recurring } : {}),
   }, { at: opening });
   add('bankCheck', { date: start, amountCents: bankCents, payIncluded: false, kind: 'opening' }, { at: opening });
   for (const b of openingBills) {

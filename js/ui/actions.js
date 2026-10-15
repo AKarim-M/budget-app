@@ -5,10 +5,11 @@ import {
   field, textInput, dateInput, moneyInput, select, segmented,
   readMoney, readOptionalMoney, showError, clearErrors,
 } from './forms.js';
-import { peso, dayLabel, shortDate, billLabel, range } from './format.js';
+import { peso, dayLabel, shortDate, billLabel, range, ordinal } from './format.js';
 import { formatInput } from '../money.js';
-import { isYMD, minYMD } from '../dates.js';
+import { isYMD, minYMD, ymOf } from '../dates.js';
 import { payEntryAt } from '../cycles.js';
+import { uuid } from '../records.js';
 
 const METHOD_OPTIONS = [['card', '💳 Card', 'card-opt'], ['cash', '💵 Cash', 'cash-opt']];
 
@@ -155,8 +156,22 @@ export function openBankCheck(app) {
 
 // ---------- planned payments ----------
 
+/** A monthly bill's month becomes a real entry the first time it is ticked, changed or skipped. */
+function materialize(app, p) {
+  if (!p.virtual) return;
+  app.store.upsert('planned', p.id, {
+    date: p.date, label: p.label, amountCents: p.amountCents, direction: p.direction, done: false, doneAt: null,
+  });
+}
+
+export function tickPlanned(app, p, done) {
+  materialize(app, p);
+  app.store.setDone(p.id, done, app.today());
+}
+
 export function openPlannedEditor(app, rec = null) {
-  openSheet(rec ? 'Edit planned item' : 'Plan a payment', (body, close) => {
+  const monthly = Boolean(rec?.recurringId);
+  openSheet(rec ? (monthly ? `${rec.label}, ${dayLabel(rec.date)}` : 'Edit planned item') : 'Plan a payment', (body, close) => {
     const label = textInput({ value: rec?.label ?? '', placeholder: 'What for (e.g. school fees)', maxlength: 120 });
     const amount = moneyInput({ value: rec ? formatInput(rec.amountCents) : '' });
     const date = dateInput({ value: rec?.date ?? app.today() });
@@ -172,14 +187,17 @@ export function openPlannedEditor(app, rec = null) {
         const d = readDate(date);
         if (!d) return undefined;
         const fields = { label: label.value.trim(), amountCents: money.cents, date: d, direction: dir.value() };
-        if (rec) app.store.update(rec.id, fields);
+        if (rec?.virtual) app.store.upsert('planned', rec.id, { ...fields, done: false, doneAt: null });
+        else if (rec) app.store.update(rec.id, fields);
         else app.store.add('planned', { ...fields, done: false, doneAt: null });
         close();
         toast(rec ? 'Saved' : `Planned ${fields.label} on ${dayLabel(d)}`);
         return undefined;
       },
     },
-    h('p', { class: 'section-note' }, 'It is set aside from "Left to spend" now, and leaves the bank when you tick it as paid.'),
+    h('p', { class: 'section-note' }, monthly
+      ? 'One month of a monthly bill. Changes here apply to this month only; edit the bill under Monthly bills to change every month.'
+      : 'It is set aside from "Left to spend" now, and leaves the bank when you tick it as paid.'),
     field('What for', label),
     h('div', { class: 'row2' }, field('Amount', amount), field('Date', date)),
     field('Type', dir.el),
@@ -188,11 +206,69 @@ export function openPlannedEditor(app, rec = null) {
       h('button', {
         type: 'button', class: 'btn btn-danger',
         onclick: () => {
+          materialize(app, rec);
           app.store.remove(rec.id);
           close();
-          toast(`Removed ${rec.label}`, { action: 'Undo', onAction: () => app.store.restore(rec.id) });
+          toast(monthly ? `Skipped ${rec.label} for ${dayLabel(rec.date)}` : `Removed ${rec.label}`,
+            { action: 'Undo', onAction: () => app.store.restore(rec.id) });
         },
-      }, 'Remove')) : null);
+      }, monthly ? 'Skip this month' : 'Remove')) : null);
+    body.append(form);
+  });
+}
+
+// ---------- monthly bills ----------
+
+export function openRecurringEditor(app, rule = null) {
+  openSheet(rule ? `Edit ${rule.label}` : 'Add a monthly bill', (body, close) => {
+    const label = textInput({ value: rule?.label ?? '', placeholder: 'e.g. Electricity', maxlength: 60 });
+    const amount = moneyInput({ value: rule ? formatInput(rule.amountCents) : '' });
+    const day = select([['', 'Choose'], ...Array.from({ length: 31 }, (_, i) => [i + 1, ordinal(i + 1)])], rule?.day ?? '');
+    const from = dateInput({ value: rule?.from ?? app.today() });
+    const last = h('input', { type: 'month', value: rule?.lastMonth ?? '' });
+    const others = () => (app.snap.settings.recurring ?? []).filter((r) => r.id !== rule?.id);
+    const form = h('form', {
+      novalidate: true,
+      onsubmit: (e) => {
+        e.preventDefault();
+        clearErrors(form);
+        if (!label.value.trim()) return showError(label, 'Enter what the bill is for.');
+        const money = readMoney(amount);
+        if (!money.ok) return undefined;
+        if (day.value === '') return showError(day, 'Choose the day it is due each month.');
+        const start = readDate(from);
+        if (!start) return undefined;
+        if (last.value && (!/^\d{4}-\d{2}$/.test(last.value) || last.value < ymOf(start))) {
+          return showError(last, 'Choose a month on or after the start.');
+        }
+        const next = {
+          id: rule?.id ?? uuid(),
+          label: label.value.trim(),
+          amountCents: money.cents,
+          day: Number(day.value),
+          from: start,
+          ...(last.value ? { lastMonth: last.value } : {}),
+        };
+        app.store.updateSettings({ recurring: [...others(), next] });
+        close();
+        toast(rule ? 'Monthly bill saved' : `${next.label} added: every month on the ${ordinal(next.day)}`);
+        return undefined;
+      },
+    },
+    h('p', { class: 'section-note' }, 'For bills you pay every month from the bank or in cash. Each month appears in Planned payments by itself, and is set aside from "Left to spend" once it falls before the cut-off. If one month costs more or less, change that month in Planned payments.'),
+    field('What for', label),
+    h('div', { class: 'row2' }, field('Usual amount', amount), field('Due each month on the', day)),
+    h('div', { class: 'row2' }, field('Starting from', from), field('Last month', last, { hint: 'Optional, if it ends' })),
+    primary(rule ? 'Save' : 'Add monthly bill'),
+    rule ? h('div', { class: 'btn-row', style: { marginTop: '12px' } },
+      h('button', {
+        type: 'button', class: 'btn btn-danger',
+        onclick: () => {
+          app.store.updateSettings({ recurring: others() });
+          close();
+          toast(`${rule.label} removed. Months already paid stay in your history.`);
+        },
+      }, 'Remove monthly bill')) : null);
     body.append(form);
   });
 }

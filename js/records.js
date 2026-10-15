@@ -11,6 +11,8 @@ export const TYPES = ['settings', 'category', 'spend', 'planned', 'cardPayment',
 
 export const paydayId = (date) => `payday:${date}`;
 export const billId = (stmt) => `bill:${stmt}`;
+/** One month of a monthly bill, once it is ticked, changed or skipped. */
+export const recurringId = (ruleId, date) => `rec:${ruleId}:${date}`;
 
 const seedCategory = (key, name, icon, color, order) => ({
   id: `cat:${key}`, type: 'category', by: 'app', updatedBy: 'app',
@@ -85,6 +87,10 @@ const RULES = {
       (i) => isText(i.id, 64) && isText(i.label, 60) && isPositiveInt(i.amountCents)
         && isOptional(i.firstDueMonth, (v) => YM.test(v)) && isOptional(i.lastDueMonth, (v) => YM.test(v)),
     ),
+    recurring: isOptional(r.recurring, (list) => Array.isArray(list) && list.every(
+      (b) => isText(b.id, 40) && /^[A-Za-z0-9_-]+$/.test(b.id) && isText(b.label, 60) && isPositiveInt(b.amountCents)
+        && isIntBetween(b.day, 1, 31) && isYMD(b.from) && isOptional(b.lastMonth, (v) => YM.test(v)),
+    )),
   }),
   category: (r) => ({
     name: isText(r.name, 40),

@@ -125,6 +125,35 @@ async function run(label, S) {
     expectEq('left to spend after cash', await lts(), S.expect.afterCash);
     expectEq('bank after cash', await page.eval("__t.text('#bank-value')"), S.expect.bankAfterCash);
 
+    // 4b. A monthly bill: set aside as soon as it's added; ticking a month moves it to the bank
+    const toCents = (t) => {
+      const n = Math.round(Number(String(t).replace(/[^\d.]/g, '')) * 100);
+      return /^\s*[−-]/.test(t) ? -n : n;
+    };
+    // The big number shows "Over by ₱X" when below zero, so read its label too.
+    const ltsCents = async () => {
+      const over = await page.eval("document.querySelector('.glance-main').classList.contains('over')");
+      return (over ? -1 : 1) * toCents(await lts());
+    };
+    const ltsBefore = await ltsCents();
+    const bankBefore = toCents(await page.eval("__t.text('#bank-value')"));
+    await act("location.hash = '#plan'");
+    await act(`const card = [...document.querySelectorAll('#tab-plan .card')].find((c) => c.querySelector('h2')?.textContent.includes('Monthly bills'));
+      __t.btn('+ Add', card).click()`);
+    await page.waitFor(sheetOpen);
+    await act(`const s = document.getElementById('sheet');
+      __t.fill(__t.field('What for', s), 'Electricity');
+      __t.fill(__t.field('Usual amount', s), '2500');
+      __t.fill(__t.field('Due each month on the', s), '20');
+      __t.btn('Add monthly bill', s).click()`);
+    await page.waitFor(`!${sheetOpen}`);
+    expectEq('left to spend after adding a monthly bill', await ltsCents(), ltsBefore - 250000);
+    await act(`const row = [...document.querySelectorAll('#tab-plan .row')]
+        .find((r) => r.textContent.includes('🔁 monthly') && r.textContent.includes('Oct 20'));
+      row.querySelector('button[aria-label="Mark as paid"]').click()`);
+    expectEq('left to spend after paying this month (unchanged)', await ltsCents(), ltsBefore - 250000);
+    expectEq('bank after paying this month', toCents(await page.eval("__t.text('#bank-value')")), bankBefore - 250000);
+
     // 5. Layout: phone (light and dim), small phone, tablet upright and sideways
     const layouts = [
       ['phone', 412, 915, false],

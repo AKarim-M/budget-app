@@ -5,9 +5,9 @@
 // card bill payments come out. A card swipe stays in the bank, reserved as "card owed",
 // until the bill is paid.
 
-import { addMonthsYM, minYMD, maxYMD } from './dates.js';
+import { addMonthsYM, minYMD, maxYMD, ymOf, daysInMonth } from './dates.js';
 import { cycleOf, cycleByStmt, paydaysBetween, installmentsFor } from './cycles.js';
-import { DEFAULT_CATEGORIES } from './records.js';
+import { DEFAULT_CATEGORIES, recurringId } from './records.js';
 
 const END_OF_DAY = '￿';
 const SEVERITY = { danger: 0, warn: 1, info: 2 };
@@ -28,11 +28,13 @@ export function buildIndex(records) {
     bankChecks: [],
     paydayOv: new Map(),
     billOv: new Map(),
+    deletedIds: new Set(),
   };
   for (const r of records) {
     if (!r) continue;
     if (r.deleted) {
       if (r.type === 'category') idx.categories.delete(r.id);
+      idx.deletedIds.add(r.id);
       continue;
     }
     switch (r.type) {
@@ -49,6 +51,33 @@ export function buildIndex(records) {
   }
   idx.bankChecks.sort((a, b) => cmpStr(a.date, b.date) || cmpStr(a.createdAt, b.createdAt) || cmpStr(a.id, b.id));
   return idx;
+}
+
+// ---------- monthly bills ----------
+
+/**
+ * Adds each monthly bill's months up to the horizon as planned payments. A month that already
+ * has its own entry (ticked, amount changed, or skipped = deleted) keeps that entry instead.
+ */
+function addRecurring(idx, horizon) {
+  const rules = idx.settings.recurring ?? [];
+  if (!rules.length) return;
+  const known = new Set([...idx.planned.map((p) => p.id), ...idx.deletedIds]);
+  for (const rule of rules) {
+    const start = maxYMD(rule.from, idx.settings.startDate);
+    for (let ym = ymOf(start); ; ym = addMonthsYM(ym, 1)) {
+      if (rule.lastMonth && ym > rule.lastMonth) break;
+      const date = `${ym}-${String(Math.min(rule.day, daysInMonth(ym))).padStart(2, '0')}`;
+      if (date > horizon) break;
+      if (date < start) continue;
+      const id = recurringId(rule.id, date);
+      if (known.has(id)) continue;
+      idx.planned.push({
+        id, type: 'planned', by: '', createdAt: '', updatedAt: '', deleted: false, virtual: true,
+        date, label: rule.label, amountCents: rule.amountCents, direction: 'out', done: false, doneAt: null,
+      });
+    }
+  }
 }
 
 // ---------- bills ----------
@@ -388,6 +417,7 @@ export function compute(records, { today }) {
   const S = idx.settings;
   const cfg = cfgOf(S);
   const C = cycleOf(today, cfg);
+  addRecurring(idx, maxYMD(C.due, today));
 
   const paydays = paydaysBetween(S.startDate, maxYMD(C.due, today), S, idx.paydayOv);
   const bills = buildBills(idx, today, cfg);
@@ -444,6 +474,9 @@ export function compute(records, { today }) {
       nextPayday: next ? { date: next.date, amountCents: next.amountCents } : null,
     },
     bills,
+    planned: idx.planned
+      .map((p) => (p.id.startsWith('rec:') ? { ...p, recurringId: p.id.split(':')[1] } : p))
+      .sort((a, b) => cmpStr(a.date, b.date) || cmpStr(a.createdAt, b.createdAt) || cmpStr(a.id, b.id)),
     owed: { cents: owedCents, creditCents: actual.credit },
     lts: {
       cents: ltsCents,

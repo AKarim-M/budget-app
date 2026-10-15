@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  SETTINGS_ID, SEED_TS, DEFAULT_CATEGORIES, paydayId, billId, uuid,
+  SETTINGS_ID, SEED_TS, DEFAULT_CATEGORIES, paydayId, billId, recurringId, uuid,
   newRecord, validateRecord, applyDone,
 } from '../js/records.js';
 
@@ -67,6 +67,18 @@ test('validateRecord rejects broken records with the field at fault', () => {
   const cat = make('category', { name: 'X', icon: '•', color: 'red', places: [], order: 1, archived: false });
   assert.deepEqual(validateRecord(cat).errors, ['color']);
   assert.deepEqual(validateRecord({ type: 'nope' }).ok, false);
+});
+
+test('settings can hold monthly bills, each checked', () => {
+  const ok = { id: 'r1', label: 'Electricity', amountCents: 250000, day: 20, from: '2026-10-15' };
+  assert.equal(validateRecord({ ...validSettings(), recurring: [ok, { ...ok, id: 'r2', day: 31, lastMonth: '2027-06' }] }).ok, true);
+  assert.deepEqual(validateRecord({ ...validSettings(), recurring: [{ ...ok, day: 32 }] }).errors, ['recurring']);
+  assert.deepEqual(validateRecord({ ...validSettings(), recurring: [{ ...ok, amountCents: 0 }] }).errors, ['recurring']);
+  assert.equal(validateRecord(validSettings()).ok, true); // older settings without monthly bills stay valid
+});
+
+test('each month of a monthly bill has a fixed id, so every device updates the same entry', () => {
+  assert.equal(recurringId('r1', '2026-10-20'), 'rec:r1:2026-10-20');
 });
 
 test('applyDone moves a future item to today when ticked early', () => {

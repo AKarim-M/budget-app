@@ -67,6 +67,11 @@ export function addMonthsYM(ym, n) {
   return `${pad4(Math.floor(t / 12))}-${pad2((((t % 12) + 12) % 12) + 1)}`;
 }
 
+export function daysInMonth(ym) {
+  const [y, m] = ym.split('-').map(Number);
+  return new Date(Date.UTC(y, m, 0)).getUTCDate();
+}
+
 export const minYMD = (a, b) => (a <= b ? a : b);
 export const maxYMD = (a, b) => (a >= b ? a : b);
 

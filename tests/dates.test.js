@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   isYMD, ymd, parseYMD, todayLocal, addDays, diffDays, weekdayOf,
-  ymOf, addMonthsYM, minYMD, maxYMD, eachDay,
+  ymOf, addMonthsYM, minYMD, maxYMD, eachDay, daysInMonth,
 } from '../js/dates.js';
 
 test('isYMD accepts only real calendar dates', () => {
@@ -55,6 +55,13 @@ test('ymOf and addMonthsYM roll over years', () => {
   assert.equal(addMonthsYM('2026-12', 1), '2027-01');
   assert.equal(addMonthsYM('2027-01', -1), '2026-12');
   assert.equal(addMonthsYM('2026-10', 14), '2027-12');
+});
+
+test('daysInMonth knows short months and leap years', () => {
+  assert.equal(daysInMonth('2026-11'), 30);
+  assert.equal(daysInMonth('2026-12'), 31);
+  assert.equal(daysInMonth('2027-02'), 28);
+  assert.equal(daysInMonth('2028-02'), 29);
 });
 
 test('minYMD and maxYMD compare dates', () => {

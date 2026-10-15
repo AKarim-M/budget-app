@@ -1,8 +1,10 @@
 // Plan: warnings, the bank balance ahead, card bills, planned payments and paydays.
 import { h, fill, cmp } from './dom.js';
-import { peso, dayLabel, shortDate, billLabel, range, warningText } from './format.js';
+import { peso, dayLabel, shortDate, billLabel, range, warningText, ordinal, monthLabel } from './format.js';
 import { toast } from './overlay.js';
-import { openPlannedEditor, openPaymentEditor, openStatementEditor, openPaydayEditor } from './actions.js';
+import {
+  openPlannedEditor, openPaymentEditor, openStatementEditor, openPaydayEditor, openRecurringEditor, tickPlanned,
+} from './actions.js';
 
 const STATUS = {
   open: ['Open', 'tag-muted'],
@@ -19,6 +21,7 @@ export function mountPlan(el, app) {
   const bills = h('div', {});
   const scheduled = h('div', { class: 'list' });
   const planned = h('div', { class: 'list' });
+  const monthly = h('div', { class: 'list' });
   const paysTitle = h('span', {});
   const pays = h('div', { class: 'pay-grid' });
 
@@ -33,6 +36,12 @@ export function mountPlan(el, app) {
           h('span', {}, 'Planned payments'),
           h('button', { type: 'button', class: 'btn btn-small', onclick: () => openPlannedEditor(app) }, '+ Add')),
         planned),
+      h('div', { class: 'card' },
+        h('h2', { class: 'card-title' },
+          h('span', {}, 'Monthly bills'),
+          h('button', { type: 'button', class: 'btn btn-small', onclick: () => openRecurringEditor(app) }, '+ Add')),
+        h('p', { class: 'section-note' }, 'Bills you pay every month from the bank or in cash. Each month shows up in Planned payments by itself.'),
+        monthly),
       h('div', { class: 'card' },
         h('h2', { class: 'card-title' }, paysTitle),
         h('p', { class: 'section-note' }, 'Tap a payday to mark it late or change the amount.'),
@@ -130,7 +139,9 @@ export function mountPlan(el, app) {
     const out = r.direction === 'out';
     return h('div', { class: 'row' },
       h('div', { class: 'row-main' },
-        h('div', { class: 'row-title' }, r.label),
+        h('div', { class: 'row-title' },
+          r.recurringId ? h('span', { class: 'tag tag-muted' }, '🔁 monthly') : null,
+          r.label),
         h('div', { class: 'row-meta' },
           `${dayLabel(r.date)} · ${out ? 'Money out' : 'Money in'}`,
           r.done ? h('span', { class: 'tag tag-done', style: { marginLeft: '6px' } }, out ? 'paid' : 'received') : null,
@@ -140,22 +151,39 @@ export function mountPlan(el, app) {
         r.done
           ? h('button', {
             type: 'button', class: 'icon-btn', 'aria-label': 'Mark as not done',
-            onclick: () => app.store.setDone(r.id, false, app.today()),
+            onclick: () => tickPlanned(app, r, false),
           }, '↺')
           : h('button', {
             type: 'button', class: 'icon-btn', 'aria-label': out ? 'Mark as paid' : 'Mark as received',
             onclick: () => {
-              app.store.setDone(r.id, true, app.today());
-              toast(`${r.label} marked ${out ? 'paid' : 'received'}`, { action: 'Undo', onAction: () => app.store.setDone(r.id, false, app.today()) });
+              tickPlanned(app, r, true);
+              toast(`${r.label} marked ${out ? 'paid' : 'received'}`, { action: 'Undo', onAction: () => tickPlanned(app, r, false) });
             },
           }, '✓'),
         h('button', { type: 'button', class: 'icon-btn', 'aria-label': `Edit ${r.label}`, onclick: () => openPlannedEditor(app, r) }, '✎')));
   }
 
+  function renderMonthly(snap) {
+    const rules = snap.settings.recurring ?? [];
+    fill(monthly, rules.length
+      ? rules.map((rule) => {
+        const next = snap.planned.find((p) => p.recurringId === rule.id && !p.done);
+        return h('div', { class: 'row' },
+          h('div', { class: 'row-main' },
+            h('div', { class: 'row-title' }, rule.label),
+            h('div', { class: 'row-meta' },
+              `${peso(rule.amountCents)} on the ${ordinal(rule.day)} of each month`
+              + `${rule.lastMonth ? ` until ${monthLabel(rule.lastMonth)}` : ''}`
+              + `${next ? ` · next ${dayLabel(next.date)}` : ''}`)),
+          h('div', { class: 'row-end' },
+            h('button', { type: 'button', class: 'icon-btn', 'aria-label': `Edit ${rule.label}`, onclick: () => openRecurringEditor(app, rule) }, '✎')));
+      })
+      : h('p', { class: 'empty' }, 'No monthly bills yet. Add electricity, water, internet, rent…'));
+  }
+
   function renderPlanned(snap) {
-    const all = app.store.all().filter((r) => r.type === 'planned' && !r.deleted);
-    const open = all.filter((r) => !r.done).sort((a, b) => cmp(a.date, b.date) || cmp(a.createdAt, b.createdAt));
-    const done = all.filter((r) => r.done).sort((a, b) => cmp(b.doneAt ?? '', a.doneAt ?? '')).slice(0, 5);
+    const open = snap.planned.filter((p) => !p.done);
+    const done = snap.planned.filter((p) => p.done).sort((a, b) => cmp(b.doneAt ?? '', a.doneAt ?? '')).slice(0, 5);
     fill(planned,
       open.length
         ? open.map((r) => plannedRow(r, snap))
@@ -183,6 +211,7 @@ export function mountPlan(el, app) {
       renderTimeline(snap);
       renderBills(snap);
       renderPlanned(snap);
+      renderMonthly(snap);
       renderPaydays(snap);
     },
   };

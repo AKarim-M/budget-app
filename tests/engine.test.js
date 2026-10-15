@@ -318,6 +318,58 @@ test("the current cycle's paydays are listed with what has arrived", () => {
     [['2026-10-20', true], ['2026-10-27', true], ['2026-11-03', false], ['2026-11-10', false]]);
 });
 
+// ---------- monthly bills ----------
+
+const ELECTRIC = { id: 'r1', label: 'Electricity', amountCents: 250000, day: 20, from: '2026-10-15' };
+const monthsOf = (snap, id = 'r1') => snap.planned.filter((p) => p.recurringId === id);
+
+test('a monthly bill is set aside when it falls before the cut-off, and shows each month ahead', () => {
+  const base = compute(household().records, { today: '2026-10-15' });
+  const s = compute(household({ recurring: [ELECTRIC] }).records, { today: '2026-10-15' });
+  assert.equal(s.lts.cents, base.lts.cents - 250000); // Oct 20 is before the Nov 14 cut-off; Nov 20 is not
+  assert.deepEqual(s.timeline.rows.filter((r) => r.label === 'Electricity').map((r) => [r.date, r.cents]),
+    [['2026-10-20', -250000], ['2026-11-20', -250000]]);
+  assert.deepEqual(monthsOf(s).map((p) => p.id), ['rec:r1:2026-10-20', 'rec:r1:2026-11-20']);
+});
+
+test('a due day of 31 lands on the last day of shorter months', () => {
+  const s = compute(household({ recurring: [{ ...ELECTRIC, day: 31 }] }).records, { today: '2026-10-15' });
+  assert.deepEqual(monthsOf(s).map((p) => p.date), ['2026-10-31', '2026-11-30']);
+});
+
+test('a monthly bill starts on its start date and stops after its last month', () => {
+  const s = compute(household({ recurring: [{ ...ELECTRIC, day: 5, lastMonth: '2026-11' }] }).records, { today: '2026-10-15' });
+  assert.deepEqual(monthsOf(s).map((p) => p.date), ['2026-11-05']); // not Oct 5 (before the start), not Dec 5 (after the end)
+});
+
+test('ticking a month as paid takes it from the bank that day; left to spend stays the same', () => {
+  const h = household({ bankCents: 500000, recurring: [ELECTRIC] });
+  const before = compute(h.records, { today: '2026-10-20' });
+  h.add('planned', {
+    date: '2026-10-20', label: 'Electricity', amountCents: 250000, direction: 'out', done: true, doneAt: '2026-10-20T02:00:00.000Z',
+  }, { id: 'rec:r1:2026-10-20', date: '2026-10-20' });
+  const after = compute(h.records, { today: '2026-10-20' });
+  assert.equal(after.lts.cents, before.lts.cents);
+  assert.equal(before.bank.nowCents - after.bank.nowCents, 250000);
+  assert.equal(after.planned.filter((p) => p.id === 'rec:r1:2026-10-20').length, 1);
+});
+
+test("changing one month's amount or skipping a month affects only that month", () => {
+  const h = household({ recurring: [ELECTRIC] });
+  h.add('planned', { date: '2026-10-20', label: 'Electricity', amountCents: 310000, direction: 'out', done: false, doneAt: null }, { id: 'rec:r1:2026-10-20' });
+  const skipped = h.add('planned', { date: '2026-11-20', label: 'Electricity', amountCents: 250000, direction: 'out', done: false, doneAt: null }, { id: 'rec:r1:2026-11-20' });
+  skipped.deleted = true;
+  const s = compute(h.records, { today: '2026-10-15' });
+  assert.deepEqual(monthsOf(s).map((p) => [p.date, p.amountCents]), [['2026-10-20', 310000]]);
+});
+
+test('an unpaid month past its date stays set aside and is flagged', () => {
+  const s = compute(household({ recurring: [ELECTRIC] }).records, { today: '2026-10-22' });
+  const base = compute(household().records, { today: '2026-10-22' });
+  assert.equal(s.lts.cents, base.lts.cents - 250000);
+  assert.ok(s.warnings.some((w) => w.code === 'overdue_planned' && w.refId === 'rec:r1:2026-10-20'));
+});
+
 // ---------- spending view ----------
 
 test('spendingForCycle groups a cycle by category and by person', () => {
