@@ -24,6 +24,16 @@ export function monthLabel(ym) {
   return `${MONTH[m - 1]} ${y}`;
 }
 
+/** 'Nov 17, 24 & Dec 1': each month named once. */
+export function dateList(dates) {
+  const parts = dates.map((d, i) => {
+    const sameMonth = i > 0 && d.slice(0, 7) === dates[i - 1].slice(0, 7);
+    return sameMonth ? String(parseYMD(d).d) : shortDate(d);
+  });
+  if (parts.length < 2) return parts.join('');
+  return `${parts.slice(0, -1).join(', ')} & ${parts[parts.length - 1]}`;
+}
+
 const PERSON_COLORS = ['#2f8f63', '#3b78c2', '#c2593f', '#8a5cc2', '#c98a16', '#16928a', '#c2417a', '#6b7a8f'];
 
 /** The same name always gets the same colour, on every device. */

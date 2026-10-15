@@ -19,7 +19,7 @@ const shotsDir = shotsAt > 0 ? resolve(process.argv[shotsAt + 1]) : null;
 
 const DAY = '2026-10-15';
 const PAGES = [
-  ['home', `?demo=1&today=${DAY}#home`, ['Left to spend', '₱5,778.50', 'until Nov 14 cut-off', '₱4,950.00', '₱23,171.50', 'Supermarket', 'Jeepney', 'Tue Oct 20 +₱10,000.00']],
+  ['home', `?demo=1&today=${DAY}#home`, ['Left to spend', '₱5,778.50', 'until the Nov 14 cut-off', 'Until the Dec 7 bill', '₱35,778.50', 'adds Nov 17, 24 &amp; Dec 1 pay', '₱4,950.00', '₱23,171.50', 'Supermarket', 'Jeepney', 'Tue Oct 20 +₱10,000.00']],
   ['plan', `?demo=1&today=${DAY}#plan`, ['School fees', 'Nov 7 bill', 'pay the card after your salary lands', 'interest is likely', 'Lowest point: ₱2,950.00 on Mon Oct 26']],
   ['spending', `?demo=1&today=${DAY}#spending`, ['Oct 15 – Nov 14', 'Food &amp; Dining', '₱350.00', '₱1,820.75']],
   ['settings', `?demo=1&today=${DAY}#settings`, ['every Tuesday', 'Cut-off on the 15th', 'bill due on the 7th', 'Appliance installment']],

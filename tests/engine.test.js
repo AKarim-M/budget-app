@@ -318,6 +318,25 @@ test("the current cycle's paydays are listed with what has arrived", () => {
     [['2026-10-20', true], ['2026-10-27', true], ['2026-11-03', false], ['2026-11-10', false]]);
 });
 
+// ---------- until the next bill ----------
+
+test('until the next bill adds the pay that lands between the cut-off and the due date', () => {
+  const s = compute(household().records, { today: '2026-10-15' });
+  assert.equal(s.untilDue.due, '2026-12-07');
+  assert.deepEqual(s.untilDue.paydays, ['2026-11-17', '2026-11-24', '2026-12-01']);
+  assert.equal(s.untilDue.cents, s.lts.cents + 3000000);
+});
+
+test('until the next bill takes off what is planned after the cut-off, up to the due date only', () => {
+  const plain = compute(household().records, { today: '2026-10-15' });
+  const h = household();
+  h.planned('2026-11-20', 50000);
+  h.planned('2026-12-10', 70000); // after the Dec 7 bill: not counted here
+  const s = compute(h.records, { today: '2026-10-15' });
+  assert.equal(s.lts.cents, plain.lts.cents); // both are after the Nov 14 cut-off
+  assert.equal(s.untilDue.cents, plain.untilDue.cents - 50000);
+});
+
 // ---------- monthly bills ----------
 
 const ELECTRIC = { id: 'r1', label: 'Electricity', amountCents: 250000, day: 20, from: '2026-10-15' };

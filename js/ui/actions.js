@@ -5,9 +5,9 @@ import {
   field, textInput, dateInput, moneyInput, select, segmented,
   readMoney, readOptionalMoney, showError, clearErrors,
 } from './forms.js';
-import { peso, dayLabel, shortDate, billLabel, range, ordinal, personColor } from './format.js';
+import { peso, dayLabel, shortDate, billLabel, range, ordinal, personColor, dateList } from './format.js';
 import { formatInput } from '../money.js';
-import { isYMD, minYMD, ymOf } from '../dates.js';
+import { isYMD, minYMD, ymOf, addDays } from '../dates.js';
 import { payEntryAt } from '../cycles.js';
 import { uuid } from '../records.js';
 
@@ -64,18 +64,30 @@ export function recentSpends(app, limit = 20) {
 export function openBreakdown(app) {
   const s = app.snap;
   const p = s.lts.parts;
+  const u = s.untilDue;
   const line = (label, cents, { signed = true } = {}) => h('div', {},
     h('span', {}, label), h('span', { class: 'num' }, peso(cents, { signed })));
-  openSheet(s.lts.over ? 'Over by: how it adds up' : 'Left to spend: how it adds up', (body) => {
+  openSheet('How it adds up', (body) => {
     body.append(
-      h('p', { class: 'section-note' }, `Everything up to the ${shortDate(s.cycle.end)} cut-off, with the card and planned payments set aside.`),
+      h('h3', { class: 'field-label', style: { margin: '0 0 4px', fontSize: '0.9rem', color: 'var(--text)' } },
+        s.lts.over ? `Over by, until the ${shortDate(s.cycle.end)} cut-off` : `Left to spend until the ${shortDate(s.cycle.end)} cut-off`),
+      h('p', { class: 'section-note' }, `Covers everything you spend until ${shortDate(s.cycle.end)}, on the card or in cash, with the card bills and planned payments set aside.`),
       h('div', { class: 'breakdown' },
         line('In the bank now', p.bankCents, { signed: false }),
         line(`Pay still coming (to ${shortDate(s.cycle.end)})`, p.payCents),
         p.plannedInCents ? line('Planned money in', p.plannedInCents) : null,
         line('Owed to the card', -p.owedCents),
         line('Planned payments', -p.plannedOutCents),
-        h('div', {}, h('span', {}, s.lts.over ? 'Over by' : 'Left to spend'), h('span', { class: 'num' }, peso(Math.abs(s.lts.cents))))));
+        h('div', {}, h('span', {}, s.lts.over ? 'Over by' : 'Left to spend'), h('span', { class: 'num' }, peso(Math.abs(s.lts.cents))))),
+      u.paydays.length ? h('div', { style: { marginTop: '18px' } },
+        h('h3', { class: 'field-label', style: { margin: '0 0 4px', fontSize: '0.9rem', color: 'var(--text)' } }, `Until the ${billLabel(u.due)}`),
+        h('p', { class: 'section-note' }, `Adds the pay that lands after the cut-off and before the ${billLabel(u.due)}. That pay also starts your next cycle, so the number above is the one to stay within until ${shortDate(s.cycle.end)}.`),
+        h('div', { class: 'breakdown' },
+          line(s.lts.over ? 'Over by now' : 'Left to spend now', s.lts.cents, { signed: false }),
+          line(`Pay on ${dateList(u.paydays)}`, u.payCents),
+          u.plannedInCents ? line('Planned money in', u.plannedInCents) : null,
+          u.plannedOutCents ? line(`Planned ${shortDate(addDays(s.cycle.end, 1))} – ${shortDate(u.due)}`, -u.plannedOutCents) : null,
+          h('div', {}, h('span', {}, `Until the ${billLabel(u.due)}`), h('span', { class: 'num' }, peso(u.cents))))) : null);
   });
 }
 

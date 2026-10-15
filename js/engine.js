@@ -438,6 +438,19 @@ export function compute(records, { today }) {
     .map((p) => p.amountCents));
   const ltsCents = bankNow.cents + payCents + plannedInCents - owedCents - plannedOutCents;
 
+  // Until the next bill: also the pay that lands after the cut-off and before this cycle's due date,
+  // less anything planned in that window. Card spending is already reserved above.
+  const inWindow = (d) => d > C.end && d <= C.due;
+  const afterCutoffPay = paydays.filter((p) => p.counted && inWindow(p.date));
+  const untilDue = {
+    due: C.due,
+    paydays: afterCutoffPay.map((p) => p.date),
+    payCents: sum(afterCutoffPay.map((p) => p.amountCents)),
+    plannedInCents: sum(idx.planned.filter((p) => !p.done && p.direction === 'in' && inWindow(p.date)).map((p) => p.amountCents)),
+    plannedOutCents: sum(idx.planned.filter((p) => !p.done && p.direction === 'out' && inWindow(p.date)).map((p) => p.amountCents)),
+  };
+  untilDue.cents = ltsCents + untilDue.payCents + untilDue.plannedInCents - untilDue.plannedOutCents;
+
   const timeline = buildTimeline(idx, today, C, bankNow.cents, paydays, bills, forecast);
   const warnings = buildWarnings(idx, today, C, bills, forecast, timeline);
 
@@ -483,6 +496,7 @@ export function compute(records, { today }) {
       over: ltsCents < 0,
       parts: { bankCents: bankNow.cents, payCents, plannedInCents, owedCents, plannedOutCents },
     },
+    untilDue,
     timeline,
     warnings,
     reconciliations,

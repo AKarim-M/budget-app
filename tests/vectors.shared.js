@@ -31,6 +31,11 @@ export function defineVectorSuite(name, V) {
     assert.equal(s.bank.nowCents, V.bankCents);
   });
 
+  test(`${name}: until the next bill equals the bank after that bill is paid`, () => {
+    const s = compute(build(V).records, { today: V.startDate });
+    assert.equal(s.untilDue.cents, E.dayEnd['2026-12-07']);
+  });
+
   test(`${name}: bank balance at the end of each day`, () => {
     const s = compute(build(V).records, { today: V.startDate });
     const end = dayMap(s, 'endCents');

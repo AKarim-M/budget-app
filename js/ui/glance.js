@@ -1,6 +1,6 @@
 // The sticky top bar: Left to spend, Bank, Card owed, and a warning strip.
 import { h, fill } from './dom.js';
-import { peso, longDate, dayLabel, shortDate, warningText } from './format.js';
+import { peso, longDate, dayLabel, shortDate, warningText, billLabel, dateList } from './format.js';
 
 function billsLine(snap) {
   const owing = snap.bills.filter((b) => !b.foldedInto && b.remCents > 0);
@@ -14,6 +14,8 @@ export function renderGlance(el, snap, app) {
   const serious = snap.warnings.filter((w) => w.severity !== 'info');
   const danger = serious.some((w) => w.severity === 'danger');
   const ltsText = peso(Math.abs(snap.lts.cents));
+  const u = snap.untilDue;
+  const untilText = peso(u.cents);
 
   fill(el,
     h('div', { class: 'glance-top' },
@@ -24,11 +26,18 @@ export function renderGlance(el, snap, app) {
         type: 'button',
         class: `glance-tile glance-main${over ? ' over' : ''}`,
         dataset: { action: 'breakdown' },
-        'aria-label': `${over ? 'Over by' : 'Left to spend'} ${ltsText}. Show how it adds up.`,
+        'aria-label': `${over ? 'Over by' : 'Left to spend'} ${ltsText} until the ${shortDate(snap.cycle.end)} cut-off; ${untilText} until the ${billLabel(u.due)}. Show how it adds up.`,
       },
       h('span', { class: 'glance-lbl' }, over ? 'Over by' : 'Left to spend'),
       h('span', { class: 'glance-big', id: 'lts-value' }, ltsText),
-      h('span', { class: 'glance-sub' }, over ? "using next cycle's pay" : `until ${shortDate(snap.cycle.end)} cut-off`)),
+      h('span', { class: 'glance-sub' }, over
+        ? `using next cycle's pay · cut-off ${shortDate(snap.cycle.end)}`
+        : `for everything until the ${shortDate(snap.cycle.end)} cut-off`),
+      u.paydays.length
+        ? h('span', { class: 'glance-next' },
+          h('span', {}, `Until the ${billLabel(u.due)}: `, h('strong', { class: 'num', id: 'until-due-value' }, untilText)),
+          h('span', { class: 'glance-sub' }, `adds ${dateList(u.paydays)} pay`))
+        : null),
       h('button', { type: 'button', class: 'glance-tile', dataset: { action: 'bank-check' }, 'aria-label': `Bank ${peso(snap.bank.nowCents)}. Update balance.` },
         h('span', { class: 'glance-lbl' }, 'Bank'),
         h('span', { class: 'glance-md', id: 'bank-value' }, peso(snap.bank.nowCents)),
