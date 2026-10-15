@@ -36,6 +36,16 @@ export function dateList(dates) {
   return `${parts.slice(0, -1).join(', ')} & ${parts[parts.length - 1]}`;
 }
 
+/** A payment ahead, in words: 'School fees', 'a card payment', 'the Nov 7 bill'. */
+export function paymentName(row, bills) {
+  if (row.kind === 'card-payment') return 'a card payment';
+  if (row.kind === 'bill-rest') {
+    const b = bills.find((x) => x.stmt === row.stmt);
+    return b ? `the ${billLabel(b.due)}` : 'a card bill';
+  }
+  return row.label;
+}
+
 const PERSON_COLORS = ['#2f8f63', '#3b78c2', '#c2593f', '#8a5cc2', '#c98a16', '#16928a', '#c2417a', '#6b7a8f'];
 
 /** The same name always gets the same colour, on every device. */

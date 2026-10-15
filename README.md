@@ -1,7 +1,8 @@
 # Household Budget
 
-A phone-first household budget app. Its main number is **how much is left to spend** until the
-card statement's cut-off, with the card bill and planned payments already set aside.
+A phone-first household budget app. Its main number is **how much is left to spend**, card or
+cash, until the next card bill is due, with that bill and planned payments already set aside.
+Under it is **the cash you can spend now** without the bank running short before a payment.
 
 - Card-cycle aware: purchases from the cut-off day go on the next bill.
 - Weekly paydays, planned payments, and card payments (including partial ones).

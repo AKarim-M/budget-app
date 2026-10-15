@@ -5,9 +5,11 @@ import {
   field, textInput, dateInput, moneyInput, select, segmented,
   readMoney, readOptionalMoney, showError, clearErrors,
 } from './forms.js';
-import { peso, pesoRounded, dayLabel, shortDate, billLabel, range, ordinal, personColor, dateList } from './format.js';
+import {
+  peso, pesoRounded, dayLabel, shortDate, billLabel, range, ordinal, personColor, dateList, paymentName,
+} from './format.js';
 import { formatInput } from '../money.js';
-import { isYMD, minYMD, ymOf, addDays } from '../dates.js';
+import { isYMD, minYMD, ymOf } from '../dates.js';
 import { payEntryAt } from '../cycles.js';
 import { uuid } from '../records.js';
 
@@ -63,39 +65,38 @@ export function recentSpends(app, limit = 20) {
 
 export function openBreakdown(app) {
   const s = app.snap;
-  const p = s.lts.parts;
   const u = s.untilDue;
+  const p = u.parts;
+  const c = s.cash;
   const bill = billLabel(u.due);
-  const cut = shortDate(s.cycle.end);
   const line = (label, cents, { signed = true } = {}) => h('div', {},
     h('span', {}, label), h('span', { class: 'num' }, peso(cents, { signed })));
   const heading = (text) => h('h3', { class: 'field-label', style: { margin: '0 0 4px', fontSize: '0.9rem', color: 'var(--text)' } }, text);
+  const note = (text) => h('p', { class: 'section-note', style: { marginTop: '8px' } }, text);
+  const by = c.date === s.today ? 'today' : `by ${dayLabel(c.date)}`;
   openSheet('How it adds up', (body) => {
     body.append(
       heading(u.cents < 0 ? `Short for the ${bill}` : `Left until the ${bill}`),
       h('p', { class: 'section-note' }, `What you can still spend, card or cash, until the ${bill}, with that bill, the bills before it and your planned payments covered.`),
       h('div', { class: 'breakdown' },
-        line(`This cycle, to the ${cut} cut-off (below)`, s.lts.cents, { signed: false }),
-        u.payCents ? line(`Pay on ${dateList(u.paydays)}`, u.payCents) : null,
-        u.plannedInCents ? line('Planned money in', u.plannedInCents) : null,
-        u.plannedOutCents ? line(`Planned ${shortDate(addDays(s.cycle.end, 1))} – ${shortDate(u.due)}`, -u.plannedOutCents) : null,
-        h('div', {}, h('span', {}, u.cents < 0 ? `Short for the ${bill}` : `Left until the ${bill}`), h('span', { class: 'num' }, peso(Math.abs(u.cents))))),
-      u.cents > 0
-        ? h('p', { class: 'section-note', style: { marginTop: '8px' } },
-          `About ${pesoRounded(u.weeklyCents)} a week for the ${u.daysLeft} days to the ${bill}. Most of the pay arrives on ${dateList(u.paydays.length ? u.paydays : [u.due])}, so go easy on cash before then.`)
-        : null,
+        line('Bank + wallet now', p.bankCents, { signed: false }),
+        p.payCents ? line(`Pay coming (${dateList(p.paydays)})`, p.payCents) : null,
+        p.plannedInCents ? line('Planned money in', p.plannedInCents) : null,
+        line('Owed to the card', -p.owedCents),
+        p.plannedOutCents ? line(`Planned payments, to ${shortDate(u.due)}`, -p.plannedOutCents) : null,
+        line(u.cents < 0 ? `Short for the ${bill}` : `Left until the ${bill}`, u.cents, { signed: false })),
+      u.cents > 0 ? note(`About ${pesoRounded(u.weeklyCents)} a week for the ${u.daysLeft} days to the ${bill}.`) : null,
       h('div', { style: { marginTop: '18px' } },
-        heading(`This cycle, to the ${cut} cut-off`),
-        h('p', { class: 'section-note' }, s.lts.cents < 0
-          ? `This cycle's pay is used up; ${peso(-s.lts.cents)} is coming from the pay after ${cut}. That's fine while the number above is positive. It just leaves less for after ${cut}.`
-          : `What this cycle's pay leaves after the card bills and planned payments due by ${cut}.`),
+        heading(c.cents < 0 ? `Bank short ${c.date === s.today ? 'today' : `on ${dayLabel(c.date)}`}` : 'Cash you can spend now'),
+        h('p', { class: 'section-note' }, `The lowest your bank and wallet get before the ${bill}, if everything goes as planned. Spending cash lowers it straight away. A card swipe doesn't, because it is paid with its bill.`),
         h('div', { class: 'breakdown' },
-          line('In the bank now', p.bankCents, { signed: false }),
-          line(`Pay still coming (to ${cut})`, p.payCents),
-          p.plannedInCents ? line('Planned money in', p.plannedInCents) : null,
-          line('Owed to the card', -p.owedCents),
-          line('Planned payments', -p.plannedOutCents),
-          h('div', {}, h('span', {}, 'This cycle'), h('span', { class: 'num' }, peso(s.lts.cents))))));
+          line('Bank + wallet now', p.bankCents, { signed: false }),
+          c.inCents ? line(`Coming in ${by}`, c.inCents) : null,
+          c.outCents ? line(`Going out ${by}`, -c.outCents) : null,
+          line(c.cents < 0 ? 'Short' : 'Cash you can spend now', c.cents, { signed: false })),
+        note(c.cause
+          ? `The lowest day is ${dayLabel(c.date)}, after ${paymentName(c.cause, s.bills)}. Plan → Bank balance ahead shows every day.`
+          : 'Nothing planned takes the bank lower than it is now.')));
   });
 }
 

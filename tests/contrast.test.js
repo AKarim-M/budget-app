@@ -50,7 +50,8 @@ const PAIRS = [
   ['warn', 'warn-bg'], ['warn', 'surface'],
   ['danger', 'danger-bg'], ['danger', 'surface'],
   ['on-primary', 'primary'],
-  ['good', 'good-bg'], ['good', 'surface'], ['text', 'good-bg'], ['muted', 'good-bg'], ['warn', 'good-bg'],
+  ['good', 'good-bg'], ['good', 'surface'], ['text', 'good-bg'], ['muted', 'good-bg'], ['danger', 'good-bg'],
+  ['text', 'danger-bg'], ['muted', 'danger-bg'],
 ];
 
 /** Follow var(--x) references to the colour they name. */

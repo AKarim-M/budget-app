@@ -24,11 +24,13 @@ const SYNTHETIC = {
   payments: [['12000', '2026-11-03'], ['8000.50', '2026-11-10']],
   swipe: ['Shoes', '3000'],
   cash: ['Fare', '1000'],
+  // "until": left until the Dec 7 bill. "cash": cash you can spend now (the bank's lowest point).
   expect: {
-    afterWizard: '₱23,999.25',
-    afterPlan: '₱7,999.25',
-    afterSwipe: '₱4,999.25',
-    afterCash: '₱3,999.25',
+    afterWizard: { until: '₱53,999.25', cash: '₱5,000.00' },
+    afterPlan: { until: '₱37,999.25', cash: '−₱1,000.50' }, // the Nov 7 bill, paid in full on the 7th, is too much
+    afterPayments: { until: '₱37,999.25', cash: '₱3,000.00' }, // split over Nov 3 and 10: lowest is Oct 26
+    afterSwipe: { until: '₱34,999.25', cash: '₱3,000.00' }, // a card swipe waits for its bill
+    afterCash: { until: '₱33,999.25', cash: '₱2,000.00' },
     bankAfterCash: '₱4,000.00',
   },
 };
@@ -53,8 +55,19 @@ async function run(label, S) {
     await page.eval(`(() => { ${js} })()`);
     await sleep(120);
   };
-  const lts = () => page.eval("__t.text('#lts-value')");
   const sheetOpen = "document.getElementById('sheet').open";
+  const toCents = (t) => {
+    const n = Math.round(Number(String(t).replace(/[^\d.]/g, '')) * 100);
+    return /^\s*[−-]/.test(t) ? -n : n;
+  };
+  // The two numbers on top, with their signs (the screen shows amounts without one).
+  const centsOf = async (id) => Number(await page.eval(`document.getElementById('${id}').dataset.cents`));
+  const shown = async () => ({ until: await centsOf('until-due-value'), cash: await centsOf('cash-value') });
+  const expectShown = async (what, wanted) => {
+    const s = await shown();
+    expectEq(`${what}: left until the bill`, s.until, toCents(wanted.until));
+    expectEq(`${what}: cash you can spend now`, s.cash, toCents(wanted.cash));
+  };
 
   try {
     await page.goto(`${origin}?demo=empty&today=${S.today}`);
@@ -79,10 +92,10 @@ async function run(label, S) {
       __t.fill(__t.field('Minimum due'), ${J(S.lastMin)});
       __t.btn('Next').click()`);
     await page.waitFor("document.querySelector('.preview')");
-    expectEq('setup preview (this cycle)', await page.eval("__t.text('#preview-lts')"), S.expect.afterWizard);
+    expectEq('setup preview (cash you can spend now)', await centsOf('preview-cash'), toCents(S.expect.afterWizard.cash));
     await act("__t.btn('Start using the app').click()");
-    await page.waitFor("__t.text('#lts-value') !== ''");
-    expectEq('left to spend after setup', await lts(), S.expect.afterWizard);
+    await page.waitFor("document.getElementById('cash-value')");
+    await expectShown('after setup', S.expect.afterWizard);
 
     // 2. Planned payments
     await act("location.hash = '#plan'");
@@ -96,7 +109,16 @@ async function run(label, S) {
         __t.btn('Add to plan', s).click()`);
       await page.waitFor(`!${sheetOpen}`);
     }
-    expectEq('left to spend after planned payments', await lts(), S.expect.afterPlan);
+    await expectShown('after planned payments', S.expect.afterPlan);
+
+    // A sheet closed and opened again at once keeps its content (the close event comes a moment later).
+    await act("__t.btn('+ Add', document.getElementById('tab-plan')).click()");
+    await page.waitFor(sheetOpen);
+    await act(`document.getElementById('sheet').close(); __t.btn('+ Add', document.getElementById('tab-plan')).click()`);
+    if (!(await page.eval(`${sheetOpen} && document.getElementById('sheet').childElementCount > 0`))) {
+      problems.push('a sheet opened right after another one closed came up empty');
+    }
+    await act("document.getElementById('sheet').close()");
 
     // 3. Scheduled card payments (not paid yet)
     for (const [amount, date] of S.payments) {
@@ -109,7 +131,7 @@ async function run(label, S) {
         __t.btn('Save payment', s).click()`);
       await page.waitFor(`!${sheetOpen}`);
     }
-    expectEq('left to spend after scheduling card payments (unchanged)', await lts(), S.expect.afterPlan);
+    await expectShown('after scheduling card payments', S.expect.afterPayments);
     const alerts = await page.eval("document.querySelector('#tab-plan .alerts').textContent");
     if (!alerts.includes('interest is likely')) problems.push('no interest warning on the Plan tab');
     if (!alerts.includes('pay the card after your salary lands')) problems.push('no pay-first warning on the Plan tab');
@@ -118,23 +140,15 @@ async function run(label, S) {
     await act("location.hash = '#home'");
     await act(`__t.fill(__t.q('#log-item'), ${J(S.swipe[0])}); __t.fill(__t.q('#log-amount'), ${J(S.swipe[1])});
       __t.btn('+ Add', document.getElementById('tab-home')).click()`);
-    expectEq('left to spend after a card swipe', await lts(), S.expect.afterSwipe);
+    await expectShown('after a card swipe', S.expect.afterSwipe);
     await act(`document.querySelector('#tab-home input[type=radio][value=cash]').click();
       __t.fill(__t.q('#log-item'), ${J(S.cash[0])}); __t.fill(__t.q('#log-amount'), ${J(S.cash[1])});
       __t.btn('+ Add', document.getElementById('tab-home')).click()`);
-    expectEq('left to spend after cash', await lts(), S.expect.afterCash);
+    await expectShown('after cash', S.expect.afterCash);
     expectEq('bank after cash', await page.eval("__t.text('#bank-value')"), S.expect.bankAfterCash);
 
-    // 4b. A monthly bill: set aside as soon as it's added; ticking a month moves it to the bank
-    const toCents = (t) => {
-      const n = Math.round(Number(String(t).replace(/[^\d.]/g, '')) * 100);
-      return /^\s*[−-]/.test(t) ? -n : n;
-    };
-    // This cycle's figure, with its sign (the screen shows the amount without one).
-    const ltsCents = async () => {
-      return Number(await page.eval("document.getElementById('lts-value').dataset.cents"));
-    };
-    const ltsBefore = await ltsCents();
+    // 4b. A monthly bill (the 20th): set aside as soon as it's added; ticking a month moves it to the bank
+    const before = await shown();
     const bankBefore = toCents(await page.eval("__t.text('#bank-value')"));
     await act("location.hash = '#plan'");
     await act(`const card = [...document.querySelectorAll('#tab-plan .card')].find((c) => c.querySelector('h2')?.textContent.includes('Monthly bills'));
@@ -146,11 +160,15 @@ async function run(label, S) {
       __t.fill(__t.field('Due each month on the', s), '20');
       __t.btn('Add monthly bill', s).click()`);
     await page.waitFor(`!${sheetOpen}`);
-    expectEq('left to spend after adding a monthly bill', await ltsCents(), ltsBefore - 250000);
+    const added = await shown();
+    expectEq('until the bill after adding a monthly bill (Oct 20 and Nov 20)', added.until, before.until - 500000);
+    expectEq('cash after adding a monthly bill (Oct 20 comes before the lowest day)', added.cash, before.cash - 250000);
     await act(`const row = [...document.querySelectorAll('#tab-plan .row')]
         .find((r) => r.textContent.includes('🔁 monthly') && r.textContent.includes('Oct 20'));
       row.querySelector('button[aria-label="Mark as paid"]').click()`);
-    expectEq('left to spend after paying this month (unchanged)', await ltsCents(), ltsBefore - 250000);
+    const ticked = await shown();
+    expectEq('until the bill after paying this month (unchanged)', ticked.until, added.until);
+    expectEq('cash after paying this month (unchanged)', ticked.cash, added.cash);
     expectEq('bank after paying this month', toCents(await page.eval("__t.text('#bank-value')")), bankBefore - 250000);
 
     // 5. Layout: phone (light and dim), small phone, tablet upright and sideways
@@ -212,7 +230,7 @@ async function offlineCheck() {
     stopServer();
     await page.goto(url);
     await page.eval(HELPERS);
-    await page.waitFor("__t.text('#lts-value') === '₱5,778.50'", 10000);
+    await page.waitFor("__t.text('#until-due-value') === '₱35,778.50'", 10000);
     if (page.errors.length) problems.push(`JavaScript errors: ${page.errors.join(' | ')}`);
   } catch (err) {
     problems.push(`stopped: ${err.message}`);

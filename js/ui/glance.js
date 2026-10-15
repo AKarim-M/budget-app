@@ -1,7 +1,7 @@
-// The sticky top bar: what is left until the next card bill (with a weekly pace and this
-// cycle's figure), Bank, Card owed, and a warning strip.
+// The sticky top bar: what is left until the next card bill (with a weekly pace and the cash
+// you can spend now), Bank, Card owed, and a warning strip.
 import { h, fill } from './dom.js';
-import { peso, pesoRounded, longDate, dayLabel, shortDate, warningText, billLabel, dateList } from './format.js';
+import { peso, pesoRounded, longDate, dayLabel, shortDate, warningText, billLabel, paymentName } from './format.js';
 
 function billsLine(snap) {
   const owing = snap.bills.filter((b) => !b.foldedInto && b.remCents > 0);
@@ -9,17 +9,20 @@ function billsLine(snap) {
   return owing.map((b) => `${shortDate(b.due)}${b.status === 'open' ? ' so far' : ''} ${peso(b.remCents)}`).join(' · ');
 }
 
-/** This cycle's figure: plain when covered by this cycle's pay, amber when it uses later pay. */
-function cycleLine(snap) {
-  const u = snap.untilDue;
-  const cut = shortDate(snap.cycle.end);
-  const amount = (cents) => h('strong', { class: 'num', id: 'lts-value', dataset: { cents: String(snap.lts.cents) } }, peso(cents));
-  if (snap.lts.cents >= 0) {
-    return h('span', { class: 'glance-next' }, h('span', {}, `This cycle (to ${cut}): `, amount(snap.lts.cents)));
+/** The cash you can spend now: the bank's lowest point before the bill. Red if the bank would run short. */
+function cashLine(snap) {
+  const c = snap.cash;
+  const when = c.date === snap.today ? 'today' : `on ${dayLabel(c.date)}`;
+  const after = c.cause ? `after ${paymentName(c.cause, snap.bills)}` : null;
+  const amount = h('strong', { class: 'num', id: 'cash-value', dataset: { cents: String(c.cents) } }, peso(Math.abs(c.cents)));
+  if (c.cents < 0) {
+    return h('span', { class: 'glance-next cash-short' },
+      h('span', {}, 'Bank short ', amount, ` ${when}`),
+      after ? h('span', { class: 'glance-sub' }, after) : null);
   }
-  return h('span', { class: 'glance-next into-next' },
-    h('span', {}, amount(-snap.lts.cents), u.paydays.length ? ` from ${dateList(u.paydays)} pay` : ' over this cycle'),
-    h('span', { class: 'glance-sub' }, `this cycle ends ${cut}`));
+  return h('span', { class: 'glance-next' },
+    h('span', {}, 'Cash you can spend now: ', amount),
+    h('span', { class: 'glance-sub' }, after ? `lowest ${when}, ${after}` : 'everything planned ahead is covered'));
 }
 
 export function renderGlance(el, snap, app) {
@@ -40,14 +43,15 @@ export function renderGlance(el, snap, app) {
         type: 'button',
         class: `glance-tile glance-main${short ? ' over' : ''}`,
         dataset: { action: 'breakdown' },
-        'aria-label': `${short ? 'Short for' : 'Left until'} the ${bill}: ${leftText}. Show how it adds up.`,
+        'aria-label': `${short ? 'Short for' : 'Left until'} the ${bill}: ${leftText}. `
+          + `${snap.cash.cents < 0 ? 'Bank short' : 'Cash you can spend now'}: ${peso(Math.abs(snap.cash.cents))}. Show how it adds up.`,
       },
       h('span', { class: 'glance-lbl' }, short ? `Short for the ${bill}` : `Left until the ${bill}`),
       h('span', { class: 'glance-big', id: 'until-due-value', dataset: { cents: String(u.cents) } }, leftText),
       h('span', { class: 'glance-sub' }, short
         ? 'more is going out than comes in before this bill'
         : `about ${pesoRounded(u.weeklyCents)} a week · card or cash`),
-      cycleLine(snap)),
+      cashLine(snap)),
       h('button', { type: 'button', class: 'glance-tile', dataset: { action: 'bank-check' }, 'aria-label': `Bank ${peso(snap.bank.nowCents)}. Update balance.` },
         h('span', { class: 'glance-lbl' }, 'Bank'),
         h('span', { class: 'glance-md', id: 'bank-value' }, peso(snap.bank.nowCents)),

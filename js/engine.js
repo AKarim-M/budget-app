@@ -355,6 +355,26 @@ function buildTimeline(idx, today, C, bankNowCents, paydays, bills, forecast) {
   return { rows, days, lowest };
 }
 
+/**
+ * Cash you can spend now: the lowest the bank (with the wallet) gets before the next bill, after
+ * everything planned. A card swipe only counts through its bill, on that bill's due date.
+ */
+function cashNow(timeline, bankNowCents, today) {
+  let cash = { cents: bankNowCents, date: today, cause: null, inCents: 0, outCents: 0 };
+  let inCents = 0;
+  let outCents = 0;
+  for (const d of timeline.days) {
+    inCents += d.inCents;
+    outCents += d.outCents;
+    if (d.endCents < cash.cents) {
+      // The biggest payment that day is what takes the bank this low.
+      const cause = d.rows.reduce((big, r) => (r.cents < 0 && (!big || r.cents < big.cents) ? r : big), null);
+      cash = { cents: d.endCents, date: d.date, cause, inCents, outCents };
+    }
+  }
+  return cash;
+}
+
 // ---------- warnings ----------
 
 function buildWarnings(idx, today, C, bills, forecast, timeline) {
@@ -453,8 +473,21 @@ export function compute(records, { today }) {
   // A weekly pace, so the leeway isn't used up early. Never more than what is left.
   untilDue.daysLeft = diffDays(today, C.due);
   untilDue.weeklyCents = untilDue.cents > 0 ? Math.floor((untilDue.cents * 7) / Math.max(7, untilDue.daysLeft)) : 0;
+  // The same number counted straight from today to the due date, for "How it adds up".
+  const payToDue = paydays.filter((p) => p.counted && p.date > today && p.date <= C.due);
+  untilDue.parts = {
+    bankCents: bankNow.cents,
+    paydays: payToDue.map((p) => p.date),
+    payCents: sum(payToDue.map((p) => p.amountCents)),
+    plannedInCents: sum(idx.planned
+      .filter((p) => !p.done && p.direction === 'in' && p.date >= today && p.date <= C.due)
+      .map((p) => p.amountCents)),
+    owedCents,
+    plannedOutCents: sum(idx.planned.filter((p) => !p.done && p.direction === 'out' && p.date <= C.due).map((p) => p.amountCents)),
+  };
 
   const timeline = buildTimeline(idx, today, C, bankNow.cents, paydays, bills, forecast);
+  const cash = cashNow(timeline, bankNow.cents, today);
   const warnings = buildWarnings(idx, today, C, bills, forecast, timeline);
 
   const reconciliations = idx.bankChecks
@@ -500,6 +533,7 @@ export function compute(records, { today }) {
       parts: { bankCents: bankNow.cents, payCents, plannedInCents, owedCents, plannedOutCents },
     },
     untilDue,
+    cash,
     timeline,
     warnings,
     reconciliations,

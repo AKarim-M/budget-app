@@ -19,7 +19,9 @@ export function initSheet() {
   const dlg = document.getElementById('sheet');
   // Tap outside the sheet to close it.
   dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });
-  dlg.addEventListener('close', () => dlg.replaceChildren());
+  // Empty the sheet once closed. The close event arrives a moment later, so a sheet opened in
+  // between must be left alone, or it would stay open with nothing in it and block the screen.
+  dlg.addEventListener('close', () => { if (!dlg.open) dlg.replaceChildren(); });
 }
 
 let toastTimer = null;

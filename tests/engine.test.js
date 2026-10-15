@@ -353,6 +353,60 @@ test('until the next bill takes off what is planned after the cut-off, up to the
   assert.equal(s.untilDue.cents, plain.untilDue.cents - 50000);
 });
 
+const withFees = (opts = {}) => {
+  const h = household({ bankCents: 500000, ...opts });
+  h.planned('2026-10-26', 1200000, 'out', { label: 'School fees' });
+  return h;
+};
+
+test('until the next bill adds up from the bank, the pay and the payments up to the due date', () => {
+  const h = withFees({ installmentCents: 100000 });
+  h.planned('2026-11-20', 50000);
+  const s = compute(h.records, { today: '2026-10-15' });
+  const p = s.untilDue.parts;
+  assert.deepEqual([p.bankCents, p.payCents, p.paydays.length, p.owedCents, p.plannedOutCents],
+    [500000, 7000000, 7, 100000, 1250000]);
+  assert.equal(p.bankCents + p.payCents + p.plannedInCents - p.owedCents - p.plannedOutCents, s.untilDue.cents);
+});
+
+// ---------- cash you can spend now ----------
+
+test('cash you can spend now is the lowest the bank gets before the next bill, and what causes it', () => {
+  const s = compute(withFees().records, { today: '2026-10-15' });
+  // ₱5,000 now + ₱10,000 pay on Oct 20 − ₱12,000 school fees on Oct 26
+  assert.deepEqual([s.cash.cents, s.cash.date, s.cash.cause.label], [300000, '2026-10-26', 'School fees']);
+  assert.deepEqual([s.cash.inCents, s.cash.outCents], [1000000, 1200000]);
+  assert.deepEqual({ date: s.cash.date, cents: s.cash.cents }, s.timeline.lowest);
+});
+
+test('with nothing ahead taking the bank lower, cash you can spend now is all the money on hand', () => {
+  const s = compute(household({ bankCents: 500000 }).records, { today: '2026-10-15' });
+  assert.deepEqual([s.cash.cents, s.cash.date, s.cash.cause], [500000, '2026-10-15', null]);
+});
+
+test('a card swipe leaves cash you can spend now alone; cash spending lowers it', () => {
+  const h = withFees();
+  h.spend('2026-10-15', 200000, 'card');
+  assert.equal(compute(h.records, { today: '2026-10-15' }).cash.cents, 300000);
+  h.spend('2026-10-15', 100000, 'cash');
+  assert.equal(compute(h.records, { today: '2026-10-15' }).cash.cents, 200000);
+});
+
+test('card swipes that would leave too little for their bill lower it to what is left after that bill', () => {
+  const h = withFees();
+  h.spend('2026-10-15', 7000000, 'card'); // ₱70,000 on the Dec 7 bill; seven paydays bring ₱70,000 by then
+  const s = compute(h.records, { today: '2026-10-15' });
+  assert.deepEqual([s.cash.cents, s.cash.date, s.cash.cause.kind], [-700000, '2026-12-07', 'bill-rest']);
+  assert.equal(s.cash.cents, s.untilDue.cents);
+});
+
+test('a payment due before enough pay arrives shows as a shortfall on that day', () => {
+  const h = household({ bankCents: 500000 });
+  h.planned('2026-10-19', 800000, 'out', { label: 'Repairs' });
+  const s = compute(h.records, { today: '2026-10-15' });
+  assert.deepEqual([s.cash.cents, s.cash.date, s.cash.cause.label], [-300000, '2026-10-19', 'Repairs']);
+});
+
 // ---------- monthly bills ----------
 
 const ELECTRIC = { id: 'r1', label: 'Electricity', amountCents: 250000, day: 20, from: '2026-10-15' };

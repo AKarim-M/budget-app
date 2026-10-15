@@ -34,7 +34,7 @@ async function device(chrome) {
     await page.eval(`(() => { ${js} })()`);
     await sleep(150);
   };
-  page.lts = () => page.eval("__t.text('#lts-value')");
+  page.untilDue = () => page.eval("__t.text('#until-due-value')");
   page.records = async () => {
     const db = JSON.parse(await page.eval("localStorage.getItem('hb1.db')"));
     return Object.fromEntries(Object.values(db.records).map((r) => [r.id, canon(r)]));
@@ -77,7 +77,7 @@ try {
     __t.fill(__t.field('Minimum due'), '2500'); __t.btn('Next').click()`);
   await A.waitFor("document.querySelector('.preview')");
   await A.act("__t.btn('Start using the app').click()");
-  await A.waitFor("__t.text('#lts-value') === '₱23,999.25'");
+  await A.waitFor("__t.text('#until-due-value') === '₱53,999.25'");
   await A.waitFor("document.querySelector('.sync-pill')?.textContent === 'Synced'", 20000);
   check('device A finishes setup and its data reaches the Sheet',
     gas.harness.records().some((row) => row[1] === 'settings'));
@@ -97,7 +97,7 @@ try {
   check('the connect link is removed from the address bar at once', (await B.eval('location.hash')) === '');
   await B.act(`const s = ${SHEET}; __t.fill(__t.field('Your name on this device', s), 'Sam');
     __t.btn('Connect this device', s).click()`);
-  await B.waitFor("__t.text('#lts-value') === '₱23,999.25'", 20000);
+  await B.waitFor("__t.text('#until-due-value') === '₱53,999.25'", 20000);
   check('device B joins and gets the whole budget without its own setup', true);
 
   // ---- Both make changes ----
@@ -115,9 +115,9 @@ try {
     await d.act("location.hash = '#settings'");
     await d.act("__t.btn('Sync now', document.getElementById('tab-settings')).click()");
   }
-  await A.waitFor("__t.text('#lts-value') === '₱8,999.25'", 20000);
-  await B.waitFor("__t.text('#lts-value') === '₱8,999.25'", 20000);
-  check("each device sees the other's changes (₱8,999.25 on both)", true);
+  await A.waitFor("__t.text('#until-due-value') === '₱38,999.25'", 20000);
+  await B.waitFor("__t.text('#until-due-value') === '₱38,999.25'", 20000);
+  check("each device sees the other's changes (₱38,999.25 on both)", true);
 
   // ---- B goes offline, logs cash, comes back ----
   await B.send('Network.enable');
@@ -127,13 +127,13 @@ try {
     __t.fill(__t.q('#log-item'), 'Fare'); __t.fill(__t.q('#log-amount'), '1000');
     __t.btn('+ Add', document.getElementById('tab-home')).click()`);
   await B.waitFor("document.querySelector('.sync-pill')?.textContent.startsWith('Offline')", 10000);
-  check('offline, device B keeps the entry and shows it waiting', (await B.lts()) === '₱7,999.25',
+  check('offline, device B keeps the entry and shows it waiting', (await B.untilDue()) === '₱37,999.25',
     await B.eval("document.querySelector('.sync-pill')?.textContent"));
   await B.send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
   await B.waitFor("document.querySelector('.sync-pill')?.textContent === 'Synced'", 20000);
   await A.act("location.hash = '#settings'");
   await A.act("__t.btn('Sync now', document.getElementById('tab-settings')).click()");
-  await A.waitFor("__t.text('#lts-value') === '₱7,999.25'", 20000);
+  await A.waitFor("__t.text('#until-due-value') === '₱37,999.25'", 20000);
   check('back online, the offline entry reaches the other device', true);
 
   // ---- Everything identical ----

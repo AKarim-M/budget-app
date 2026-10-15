@@ -10,7 +10,8 @@ The bank account plus cash in the wallet is a single pool.
 - Pay goes **in** on each payday.
 - Cash spending, planned payments and **card bill payments** go **out**.
 - A **card swipe does not leave the bank** on the day you swipe. It stays in the pool as
-  **card owed** until the bill is paid, which is why it lowers *Left to spend* straight away.
+  **card owed** until the bill is paid, which is why it lowers *Left until the next bill*
+  straight away.
 
 ## Card statements
 
@@ -24,34 +25,48 @@ With a cut-off day of **15** and a due day of **7**:
 
 Every bill also carries the monthly installment(s) whose window includes its due month.
 
-## Left to spend
+## The two numbers on top
 
-This is the amount still free until the current statement's cut-off, with the card and
-planned payments covered:
+**Left until the next bill** (the big number) is what can still be spent, card or cash, until
+the current statement's due date, with that bill, the bills before it and planned payments
+covered:
 
 ```
   money on hand now (bank + wallet)
-+ paydays still to come before the cut-off   (only counted paydays)
-+ planned money in, not yet received, before the cut-off
++ paydays still to come, up to the due date  (only counted paydays)
++ planned money in, not yet received, up to the due date
 − everything owed to the card                (all unpaid bills, incl. the open one so far)
-− planned payments not yet made, up to the cut-off (overdue ones too)
+− planned payments not yet made, up to the due date (overdue ones too)
 ```
 
-How each entry changes it:
+Under it is a weekly pace: that amount spread over the weeks left to the due date.
 
-- **Every card swipe and cash spend** lowers it as soon as you log it.
-- **A payday arriving** doesn't change it, because it was already counted.
-- **Paying the card** doesn't change it either: that money was already set aside.
-- **Unticking a payday** (late or missing) lowers it by that pay.
-- **Below zero**, it shows as **"Over by"**: you are spending next cycle's pay.
+**Cash you can spend now** is the lowest the bank (with the wallet) gets between today and that
+due date, if everything goes as planned: the lowest point of the *Bank balance ahead* below.
+Spending that much in cash today still leaves every planned payment and bill covered on its
+day. Below zero it shows as **"Bank short ₱X on <day>"**.
+
+How each entry changes them:
+
+- **A cash spend** lowers both as soon as you log it.
+- **A card swipe** lowers the big number at once. It lowers *cash you can spend now* only if
+  the bill it lands on could no longer be paid, because a swipe leaves the bank on that bill's
+  due date.
+- **A payday arriving** or **paying the card as planned** changes neither: they were already
+  counted.
+- **Unticking a payday** (late or missing) lowers the big number by that pay. *Cash you can
+  spend now* drops too if, without that pay, the bank would go lower on some day.
 
 **Example (made-up):** pay is ₱10,000 every Tuesday. On Oct 15 there is ₱5,000 in the bank.
-The Nov 7 bill has ₱20,000.50 unpaid, the installment is ₱1,000.25, and ₱12,000 and ₱4,000
-are planned for Oct 26 and Oct 27.
+The Nov 7 bill has ₱20,000.50 unpaid (to be paid ₱12,000 on Nov 3 and ₱8,000.50 on Nov 10), the
+installment is ₱1,000.25, and ₱12,000 and ₱4,000 are planned for Oct 26 and Oct 27.
 
 ```
-5,000 + 4 × 10,000 − (20,000.50 + 1,000.25) − 16,000 = ₱7,999.25 left to spend
+Left until the Dec 7 bill:  5,000 + 7 × 10,000 − (20,000.50 + 1,000.25) − 16,000 = ₱37,999.25
+Cash you can spend now:     5,000 + 10,000 (Oct 20 pay) − 12,000 (Oct 26)         = ₱3,000.00
 ```
+
+The lowest day is Oct 26: on every later day up to the Dec 7 bill, the bank stays higher.
 
 ## Bank balance ahead (timeline)
 

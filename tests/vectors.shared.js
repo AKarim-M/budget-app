@@ -43,6 +43,19 @@ export function defineVectorSuite(name, V) {
     assert.deepEqual(s.timeline.lowest, E.lowest);
   });
 
+  test(`${name}: cash you can spend now is the bank's lowest point before the next bill`, () => {
+    const s = compute(build(V).records, { today: V.startDate });
+    assert.deepEqual({ date: s.cash.date, cents: s.cash.cents }, E.lowest);
+  });
+
+  test(`${name}: a card swipe leaves cash you can spend now alone; cash spending lowers it`, () => {
+    const h = build(V);
+    h.spend(V.startDate, V.swipe.cents, 'card');
+    assert.equal(compute(h.records, { today: V.startDate }).cash.cents, E.lowest.cents);
+    h.spend(V.startDate, V.cashCents, 'cash');
+    assert.equal(compute(h.records, { today: V.startDate }).cash.cents, E.lowest.cents - V.cashCents);
+  });
+
   test(`${name}: payments on a payday warn to wait for the salary`, () => {
     const s = compute(build(V).records, { today: V.startDate });
     const dates = s.warnings.filter((w) => w.code === 'needs_pay_first').map((w) => w.date);
