@@ -9,6 +9,7 @@ import { isYMD, maxYMD } from '../dates.js';
 import { payEntryAt } from '../cycles.js';
 import { uuid } from '../records.js';
 import { installApp } from '../pwa.js';
+import { syncRows } from './sync-panel.js';
 
 const PALETTE = ['#7c4d3a', '#2b5b84', '#6d4c7d', '#b45309', '#2d6a4f', '#c2593f', '#52606d'];
 const THEMES = { light: 'Warm paper', dim: 'Soft matte (dim)', auto: 'Same as this phone' };
@@ -314,7 +315,7 @@ export function mountSettings(el, app) {
               : `The app expected ${peso(r.expectedCents)} (${peso(r.diffCents, { signed: true })} difference)`)));
 
       fill(data,
-        setting('Sync with Google Sheet', 'Coming in the next update. Until then, this device keeps its own copy.'),
+        syncRows(app),
         setting('Back up', 'Save a file with all entries', smallBtn('Export', () => exportData(app))),
         setting('Restore or add places', 'Load a backup or a places file', smallBtn('Import', () => importData(app))),
         setting('Reset this device', 'Remove the budget stored on this device', smallBtn('Reset', () => confirmReset(app), 'btn-danger')));

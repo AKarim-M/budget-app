@@ -1,0 +1,44 @@
+[
+  {
+    "name": "newer updatedAt wins",
+    "a": { "id": "x", "type": "spend", "updatedAt": "2026-10-15T01:00:00.001Z", "deleted": false, "amountCents": 1 },
+    "b": { "id": "x", "type": "spend", "updatedAt": "2026-10-15T01:00:00.000Z", "deleted": false, "amountCents": 2 },
+    "sign": 1
+  },
+  {
+    "name": "older updatedAt loses",
+    "a": { "id": "x", "type": "spend", "updatedAt": "2026-10-14T23:59:59.999Z", "deleted": true, "amountCents": 1 },
+    "b": { "id": "x", "type": "spend", "updatedAt": "2026-10-15T00:00:00.000Z", "deleted": false, "amountCents": 2 },
+    "sign": -1
+  },
+  {
+    "name": "tie: deletion wins",
+    "a": { "id": "x", "type": "spend", "updatedAt": "2026-10-15T01:00:00.000Z", "deleted": true, "amountCents": 1 },
+    "b": { "id": "x", "type": "spend", "updatedAt": "2026-10-15T01:00:00.000Z", "deleted": false, "amountCents": 1 },
+    "sign": 1
+  },
+  {
+    "name": "tie: live loses to deletion",
+    "a": { "id": "x", "type": "spend", "updatedAt": "2026-10-15T01:00:00.000Z", "deleted": false, "amountCents": 1 },
+    "b": { "id": "x", "type": "spend", "updatedAt": "2026-10-15T01:00:00.000Z", "deleted": true, "amountCents": 1 },
+    "sign": -1
+  },
+  {
+    "name": "full tie broken by canonical JSON",
+    "a": { "id": "x", "type": "spend", "updatedAt": "2026-10-15T01:00:00.000Z", "deleted": false, "amountCents": 2 },
+    "b": { "id": "x", "type": "spend", "updatedAt": "2026-10-15T01:00:00.000Z", "deleted": false, "amountCents": 10 },
+    "sign": 1
+  },
+  {
+    "name": "same content in a different key order is equal",
+    "a": { "id": "x", "type": "spend", "updatedAt": "2026-10-15T01:00:00.000Z", "deleted": false, "item": "A", "nested": { "b": 1, "a": 2 } },
+    "b": { "nested": { "a": 2, "b": 1 }, "item": "A", "deleted": false, "updatedAt": "2026-10-15T01:00:00.000Z", "type": "spend", "id": "x" },
+    "sign": 0
+  },
+  {
+    "name": "sync-only fields are ignored",
+    "a": { "id": "x", "type": "spend", "updatedAt": "2026-10-15T01:00:00.000Z", "deleted": false, "rev": 9, "_view": { "label": "x" } },
+    "b": { "id": "x", "type": "spend", "updatedAt": "2026-10-15T01:00:00.000Z", "deleted": false },
+    "sign": 0
+  }
+]

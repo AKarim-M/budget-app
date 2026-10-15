@@ -16,6 +16,9 @@ import { initSheet } from './ui/overlay.js';
 import { openBreakdown, openBankCheck } from './ui/actions.js';
 import { longDate } from './ui/format.js';
 import { initPwa } from './pwa.js';
+import { createSync } from './sync.js';
+import { statusPill, openJoin, openConnect } from './ui/sync-panel.js';
+import { toast } from './ui/overlay.js';
 
 const ROUTES = ['home', 'plan', 'spending', 'settings'];
 const STORAGE_KEYS = ['hb1.db', 'hb1.device', 'hb1.sync'];
@@ -34,16 +37,28 @@ function throwawayStorage() {
 }
 
 async function main() {
-  const store = createStore({ storage: demo ? throwawayStorage() : window.localStorage });
+  // A device-connection link (#connect=...) holds the sync code: take it out of the address bar at once.
+  const connectCode = location.hash.startsWith('#connect=') ? location.hash.slice('#connect='.length) : null;
+  if (connectCode) history.replaceState(null, '', location.pathname + location.search);
+
+  let sync = null;
+  const store = createStore({
+    storage: demo ? throwawayStorage() : window.localStorage,
+    clockOffset: () => sync?.clockOffset() ?? 0,
+  });
   if (demo === '1') (await import('./demo.js')).seedDemo(store);
+  sync = demo ? null : createSync({ store });
 
   const app = {
     store,
+    sync,
     snap: null,
     demo: Boolean(demo),
     today: () => forcedToday ?? todayLocal(),
     refresh,
     applyTheme,
+    statusPill: () => statusPill(app),
+    openConnect: () => openConnect(app),
     resetDevice() {
       if (!demo) for (const k of STORAGE_KEYS) window.localStorage.removeItem(k);
       location.reload();
@@ -64,8 +79,17 @@ async function main() {
 
   store.subscribe((e) => {
     if (e.origin === 'device') applyTheme();
-    refresh();
+    if (e.origin !== 'sync') refresh();
   });
+  if (sync) {
+    // Sync status changes often: redraw only the top bar and Settings.
+    sync.subscribe(() => {
+      if (!app.snap || app.snap.needsSetup) return;
+      renderGlance(byId('glance'), app.snap, app);
+      views.settings.update(app.snap);
+    });
+    sync.start();
+  }
   window.addEventListener('hashchange', route);
   window.addEventListener('storage', (e) => {
     if (!demo && e.key === 'hb1.db') store.reloadFromStorage();
@@ -89,6 +113,10 @@ async function main() {
 
   refresh();
   route();
+  if (connectCode) {
+    if (sync) openJoin(app, connectCode);
+    else toast('Connecting devices is not available in the demo.');
+  }
 
   function refresh() {
     app.snap = compute(store.all(), { today: app.today() });

@@ -86,7 +86,11 @@ export function renderWizard(el, app) {
     h('p', { class: 'lead' }, 'This app shows how much you can still spend while keeping your card bill and planned payments covered. Setup takes about two minutes.'),
     field('Your name on this device', name, { hint: 'Shown next to the items you log, so your household knows who added what.' }),
     nav(null, 'Start setup'),
-    h('p', { class: 'small muted', style: { marginTop: '14px' } },
+    app.sync ? h('p', { class: 'small muted', style: { marginTop: '14px' } },
+      'Setting up your Google Sheet for syncing? ',
+      h('button', { type: 'button', class: 'link-btn', onclick: () => app.openConnect() }, 'Connect to it first'),
+      '. Joining from another device? Scan the QR code it shows (Settings → Connect another device).') : null,
+    h('p', { class: 'small muted', style: { marginTop: '10px' } },
       'Have a backup file? ',
       h('button', { type: 'button', class: 'link-btn', onclick: () => file.click() }, 'Restore it instead'),
       file));

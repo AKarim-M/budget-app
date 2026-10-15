@@ -489,3 +489,21 @@ input[aria-invalid="true"] { border-color: var(--danger); }
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
 }
 [data-theme="dim"] .update-bar { color: #102016; }
+
+/* ---------- sync ---------- */
+.sync-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 99px;
+  text-decoration: none;
+  background: var(--surface-subtle);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.sync-pill.ok { background: var(--primary-bg); color: var(--primary); }
+.sync-pill.warn { background: var(--warn-bg); color: var(--warn); }
+.sync-pill.danger { background: var(--danger-bg); color: var(--danger); }
+.qr-wrap { display: flex; justify-content: center; }
+.qr { width: 240px; height: 240px; image-rendering: pixelated; background: #fff; padding: 8px; border-radius: 12px; }
+.setting .btn-row { flex-shrink: 0; }

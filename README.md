@@ -6,7 +6,8 @@ card statement's cut-off, with the card bill and planned payments already set as
 - Card-cycle aware: purchases from the cut-off day go on the next bill.
 - Weekly paydays, planned payments, and card payments (including partial ones).
 - A day-by-day "bank balance ahead" with warnings.
-- Several people can log on their own phones (Google Sheet sync is in progress).
+- Several people can log on their own phones. Everything syncs through your own Google Sheet
+  ([setup guide](docs/sync-setup.md)).
 - Plain HTML/CSS/JavaScript. No build step, no dependencies, no running costs.
 
 How the numbers work: [docs/spec.md](docs/spec.md).
@@ -28,6 +29,7 @@ Then open:
 ```
 npm test                         # unit tests, incl. made-up end-to-end money scenarios
 node tools/e2e.mjs               # phone-size walkthrough in headless Chrome (+ layout and errors)
+node tools/e2e-sync.mjs          # two browsers syncing through a local stand-in for Google's server
 node tools/smoke.mjs             # quick render check of every tab
 node tools/privacy-check.mjs     # nothing private in the files about to be committed
 ```

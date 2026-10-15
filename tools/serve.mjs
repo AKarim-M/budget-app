@@ -23,7 +23,8 @@ const TYPES = {
   '.md': 'text/plain; charset=utf-8',
 };
 
-export function startServer({ root = resolve('.'), port = 8080, cache = 'max-age=600' } = {}) {
+/** connectSrc: extra sync origins to allow (tests use a local stand-in for Google's server). */
+export function startServer({ root = resolve('.'), port = 8080, cache = 'max-age=600', connectSrc = '' } = {}) {
   const rootDir = resolve(root);
   const server = createServer(async (req, res) => {
     const url = new URL(req.url, 'http://localhost');
@@ -47,7 +48,10 @@ export function startServer({ root = resolve('.'), port = 8080, cache = 'max-age
     }
     try {
       if (!(await stat(file)).isFile()) throw new Error('not a file');
-      const body = await readFile(file);
+      let body = await readFile(file);
+      if (connectSrc && file.endsWith('index.html')) {
+        body = Buffer.from(body.toString('utf8').replace("connect-src 'self'", `connect-src 'self' ${connectSrc}`));
+      }
       res.writeHead(200, {
         'Content-Type': TYPES[extname(file).toLowerCase()] ?? 'application/octet-stream',
         'Cache-Control': cache,

@@ -15,7 +15,8 @@ const NOREPLY = /^\d+\+[\w-]+@users\.noreply\.github\.com$/;
 const BINARY = new Set(['.png', '.ico', '.jpg', '.jpeg', '.webp', '.gif', '.woff', '.woff2']);
 
 const PATTERNS = [
-  [/script\.google(?:usercontent)?\.com\/macros/i, 'Apps Script web-app link'],
+  // A real deployment link has a long id; the app's code only builds links from parts.
+  [/script\.google(?:usercontent)?\.com\/(?:a\/[^/\s]+\/)?macros\/s\/[\w-]{20,}/i, 'Apps Script web-app link'],
   [/AKfycb[\w-]{20,}/, 'Apps Script deployment id'],
   [/#connect=\d+\./, 'device connect link'],
   [/[\w.+-]+@(?!users\.noreply\.github\.com\b|example\.(?:com|org)\b)[\w-]+(?:\.[\w-]+)+/i, 'email address'],

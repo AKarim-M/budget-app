@@ -51,7 +51,8 @@ test('the service worker has a version to bump on each release', () => {
 });
 
 test('the service worker keeps every app file for offline use', () => {
-  const needed = ['index.html', 'manifest.webmanifest', ...filesUnder('css'), ...filesUnder('js'), ...filesUnder('icons'), ...filesUnder('vendor')];
+  const vendorCode = filesUnder('vendor').filter((f) => /\.(m?js|css)$/.test(f));
+  const needed = ['index.html', 'manifest.webmanifest', ...filesUnder('css'), ...filesUnder('js'), ...filesUnder('icons'), ...vendorCode];
   const missing = needed.filter((f) => !shell.includes(`./${f}`));
   assert.deepEqual(missing, []);
 });

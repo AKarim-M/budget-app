@@ -1,7 +1,7 @@
 // Service worker: keeps the whole app on the phone so it opens and works offline.
 // Bump VERSION on every release so phones pick up the new files.
 
-const VERSION = '2026.10.15-1';
+const VERSION = '2026.10.15-2';
 const PREFIX = 'hb-shell-';
 const CACHE = PREFIX + VERSION;
 const SHELL = [
@@ -19,6 +19,8 @@ const SHELL = [
   './js/pwa.js',
   './js/records.js',
   './js/store.js',
+  './js/sync-core.js',
+  './js/sync.js',
   './js/ui/actions.js',
   './js/ui/dom.js',
   './js/ui/format.js',
@@ -29,11 +31,13 @@ const SHELL = [
   './js/ui/plan.js',
   './js/ui/settings.js',
   './js/ui/spending.js',
+  './js/ui/sync-panel.js',
   './js/ui/wizard.js',
   './icons/apple-touch-icon-180.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/maskable-512.png',
+  './vendor/qrcode-generator/qrcode.mjs',
 ];
 
 self.addEventListener('install', (event) => {
