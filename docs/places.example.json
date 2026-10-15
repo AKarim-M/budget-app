@@ -1,0 +1,7 @@
+{
+  "categories": [
+    { "id": "cat:food", "name": "Food & Dining", "places": ["Canteen", "Bakery", "Coffee shop"] },
+    { "id": "cat:groceries", "places": ["Supermarket", "Wet market"] },
+    { "key": "pets", "name": "Pets", "icon": "🐶", "color": "#7c4d3a", "places": ["Vet", "Pet shop"] }
+  ]
+}
