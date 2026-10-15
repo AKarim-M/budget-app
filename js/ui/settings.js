@@ -10,7 +10,7 @@ import { payEntryAt } from '../cycles.js';
 import { uuid } from '../records.js';
 
 const PALETTE = ['#7c4d3a', '#2b5b84', '#6d4c7d', '#b45309', '#2d6a4f', '#c2593f', '#52606d'];
-const THEMES = { light: 'Warm light', dim: 'Soft matte (dim)', auto: 'Same as this phone' };
+const THEMES = { light: 'Warm paper', dim: 'Soft matte (dim)', auto: 'Same as this phone' };
 const MONTH_RE = /^\d{4}-\d{2}$/;
 const days = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
 

@@ -1,24 +1,25 @@
-/* Household Budget. Colour tokens carried over unchanged from the original app:
-   "Warm Paper & Forest Sage" (light) and "Soft Matte" (dim). */
+/* Household Budget. Two themes from the original app, softened:
+   "Warm Paper & Forest Sage" (light: cream paper, no pure white) and "Soft Matte" (dim).
+   tests/contrast.test.js keeps every text colour readable (WCAG AA). */
 
 :root {
-  --bg: #f3f1ec;
-  --surface: #ffffff;
-  --surface-subtle: #ebe8e0;
-  --border: #dcd8ce;
+  --bg: #e9e2d4;
+  --surface: #f4eee3;
+  --surface-subtle: #e3dbcb;
+  --border: #d3c9b6;
   --text: #1f2421;
-  --muted: #646a65;
+  --muted: #5c615c;
   --primary: #2d6a4f;
-  --primary-bg: #e6f2ec;
+  --primary-bg: #dde8da;
   --card-accent: #7c4d3a;
-  --card-bg: #f7ece8;
+  --card-bg: #efdfd5;
   --cash-accent: #2b5b84;
-  --cash-bg: #e8f0f7;
-  --warn: #b45309;
-  --warn-bg: #fdf3e6;
+  --cash-bg: #dde6ec;
+  --warn: #9a4a05;
+  --warn-bg: #f3e3c9;
   --danger: #b91c1c;
-  --danger-bg: #fbeaea;
-  --shadow: 0 2px 8px rgba(31, 36, 33, 0.05);
+  --danger-bg: #f2dcd6;
+  --shadow: 0 2px 8px rgba(70, 50, 20, 0.07);
   --radius: 14px;
   --tabbar-h: 62px;
   color-scheme: light;
@@ -37,9 +38,9 @@
   --card-bg: rgba(217, 155, 130, 0.15);
   --cash-accent: #8ab4d8;
   --cash-bg: rgba(138, 180, 216, 0.15);
-  --warn: #d97706;
-  --warn-bg: rgba(217, 119, 6, 0.15);
-  --danger: #ef4444;
+  --warn: #f59e0b;
+  --warn-bg: rgba(245, 158, 11, 0.15);
+  --danger: #f87171;
   --danger-bg: rgba(239, 68, 68, 0.15);
   --shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
   color-scheme: dark;
