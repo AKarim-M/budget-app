@@ -1,6 +1,7 @@
-// The sticky top bar: Left to spend, Bank, Card owed, and a warning strip.
+// The sticky top bar: what is left until the next card bill (with a weekly pace and this
+// cycle's figure), Bank, Card owed, and a warning strip.
 import { h, fill } from './dom.js';
-import { peso, longDate, dayLabel, shortDate, warningText, billLabel, dateList } from './format.js';
+import { peso, pesoRounded, longDate, dayLabel, shortDate, warningText, billLabel, dateList } from './format.js';
 
 function billsLine(snap) {
   const owing = snap.bills.filter((b) => !b.foldedInto && b.remCents > 0);
@@ -8,14 +9,27 @@ function billsLine(snap) {
   return owing.map((b) => `${shortDate(b.due)}${b.status === 'open' ? ' so far' : ''} ${peso(b.remCents)}`).join(' · ');
 }
 
+/** This cycle's figure: plain when covered by this cycle's pay, amber when it uses later pay. */
+function cycleLine(snap) {
+  const u = snap.untilDue;
+  const cut = shortDate(snap.cycle.end);
+  const amount = (cents) => h('strong', { class: 'num', id: 'lts-value', dataset: { cents: String(snap.lts.cents) } }, peso(cents));
+  if (snap.lts.cents >= 0) {
+    return h('span', { class: 'glance-next' }, h('span', {}, `This cycle (to ${cut}): `, amount(snap.lts.cents)));
+  }
+  return h('span', { class: 'glance-next into-next' },
+    h('span', {}, amount(-snap.lts.cents), u.paydays.length ? ` from ${dateList(u.paydays)} pay` : ' over this cycle'),
+    h('span', { class: 'glance-sub' }, `this cycle ends ${cut}`));
+}
+
 export function renderGlance(el, snap, app) {
-  const over = snap.lts.over;
   const next = snap.bank.nextPayday;
   const serious = snap.warnings.filter((w) => w.severity !== 'info');
   const danger = serious.some((w) => w.severity === 'danger');
-  const ltsText = peso(Math.abs(snap.lts.cents));
   const u = snap.untilDue;
-  const untilText = peso(u.cents);
+  const short = u.cents < 0; // the next bill would not be covered: the only red state
+  const bill = billLabel(u.due);
+  const leftText = peso(Math.abs(u.cents));
 
   fill(el,
     h('div', { class: 'glance-top' },
@@ -24,20 +38,16 @@ export function renderGlance(el, snap, app) {
     h('div', { class: 'glance-grid' },
       h('button', {
         type: 'button',
-        class: `glance-tile glance-main${over ? ' over' : ''}`,
+        class: `glance-tile glance-main${short ? ' over' : ''}`,
         dataset: { action: 'breakdown' },
-        'aria-label': `${over ? 'Over by' : 'Left to spend'} ${ltsText} until the ${shortDate(snap.cycle.end)} cut-off; ${untilText} until the ${billLabel(u.due)}. Show how it adds up.`,
+        'aria-label': `${short ? 'Short for' : 'Left until'} the ${bill}: ${leftText}. Show how it adds up.`,
       },
-      h('span', { class: 'glance-lbl' }, over ? 'Over by' : 'Left to spend'),
-      h('span', { class: 'glance-big', id: 'lts-value' }, ltsText),
-      h('span', { class: 'glance-sub' }, over
-        ? `using next cycle's pay · cut-off ${shortDate(snap.cycle.end)}`
-        : `for everything until the ${shortDate(snap.cycle.end)} cut-off`),
-      u.paydays.length
-        ? h('span', { class: 'glance-next' },
-          h('span', {}, `Until the ${billLabel(u.due)}: `, h('strong', { class: 'num', id: 'until-due-value' }, untilText)),
-          h('span', { class: 'glance-sub' }, `adds ${dateList(u.paydays)} pay`))
-        : null),
+      h('span', { class: 'glance-lbl' }, short ? `Short for the ${bill}` : `Left until the ${bill}`),
+      h('span', { class: 'glance-big', id: 'until-due-value', dataset: { cents: String(u.cents) } }, leftText),
+      h('span', { class: 'glance-sub' }, short
+        ? 'more is going out than comes in before this bill'
+        : `about ${pesoRounded(u.weeklyCents)} a week · card or cash`),
+      cycleLine(snap)),
       h('button', { type: 'button', class: 'glance-tile', dataset: { action: 'bank-check' }, 'aria-label': `Bank ${peso(snap.bank.nowCents)}. Update balance.` },
         h('span', { class: 'glance-lbl' }, 'Bank'),
         h('span', { class: 'glance-md', id: 'bank-value' }, peso(snap.bank.nowCents)),

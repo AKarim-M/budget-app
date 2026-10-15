@@ -5,7 +5,7 @@
 // card bill payments come out. A card swipe stays in the bank, reserved as "card owed",
 // until the bill is paid.
 
-import { addMonthsYM, minYMD, maxYMD, ymOf, daysInMonth } from './dates.js';
+import { addMonthsYM, minYMD, maxYMD, ymOf, daysInMonth, diffDays } from './dates.js';
 import { cycleOf, cycleByStmt, paydaysBetween, installmentsFor } from './cycles.js';
 import { DEFAULT_CATEGORIES, recurringId } from './records.js';
 
@@ -450,6 +450,9 @@ export function compute(records, { today }) {
     plannedOutCents: sum(idx.planned.filter((p) => !p.done && p.direction === 'out' && inWindow(p.date)).map((p) => p.amountCents)),
   };
   untilDue.cents = ltsCents + untilDue.payCents + untilDue.plannedInCents - untilDue.plannedOutCents;
+  // A weekly pace, so the leeway isn't used up early. Never more than what is left.
+  untilDue.daysLeft = diffDays(today, C.due);
+  untilDue.weeklyCents = untilDue.cents > 0 ? Math.floor((untilDue.cents * 7) / Math.max(7, untilDue.daysLeft)) : 0;
 
   const timeline = buildTimeline(idx, today, C, bankNow.cents, paydays, bills, forecast);
   const warnings = buildWarnings(idx, today, C, bills, forecast, timeline);

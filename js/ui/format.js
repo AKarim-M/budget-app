@@ -8,6 +8,8 @@ const MONTH = ['January', 'February', 'March', 'April', 'May', 'June', 'July', '
 export const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 export const peso = formatPeso;
+/** A rounded amount for guides like a weekly pace: '₱6,350'. */
+export const pesoRounded = (cents) => formatPeso(Math.round(cents / 1000) * 1000).replace(/\.00$/, '');
 
 export function shortDate(s) {
   const { m, d } = parseYMD(s);

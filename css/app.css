@@ -610,3 +610,5 @@ input[aria-invalid="true"] { border-color: var(--danger); }
 }
 .glance-next strong { font-size: 0.95rem; }
 .glance-main.over .glance-next { border-top-color: var(--danger); }
+.glance-next.into-next { color: var(--warn); border-top-color: var(--warn); }
+.glance-next.into-next strong { color: var(--warn); }

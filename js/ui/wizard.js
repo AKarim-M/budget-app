@@ -1,7 +1,7 @@
 // First-run setup: name, pay and card dates, starting point, then a live preview.
 import { h, fill } from './dom.js';
 import { field, textInput, dateInput, moneyInput, select, readMoney, readOptionalMoney, showError, clearErrors } from './forms.js';
-import { peso, shortDate, range, ordinal, WEEKDAYS, billLabel, dayLabel } from './format.js';
+import { peso, pesoRounded, shortDate, range, ordinal, WEEKDAYS, billLabel, dayLabel } from './format.js';
 import { toast } from './overlay.js';
 import { compute } from '../engine.js';
 import { newRecord, uuid } from '../records.js';
@@ -261,15 +261,18 @@ export function renderWizard(el, app) {
       },
     },
     h('h1', {}, 'Ready'),
-    h('div', { class: `preview${snap.lts.over ? ' over' : ''}` },
-      h('div', { class: 'glance-lbl' }, snap.lts.over ? 'Over by' : 'Left to spend'),
-      h('div', { class: 'glance-big' }, peso(Math.abs(snap.lts.cents))),
-      h('div', { class: 'glance-sub' }, `until the ${shortDate(snap.cycle.end)} cut-off`),
+    h('div', { class: `preview${snap.untilDue.cents < 0 ? ' over' : ''}` },
+      h('div', { class: 'glance-lbl' }, `${snap.untilDue.cents < 0 ? 'Short for' : 'Left until'} the ${billLabel(snap.untilDue.due)}`),
+      h('div', { class: 'glance-big' }, peso(Math.abs(snap.untilDue.cents))),
+      h('div', { class: 'glance-sub' }, snap.untilDue.cents > 0 ? `about ${pesoRounded(snap.untilDue.weeklyCents)} a week` : ''),
       h('div', { class: 'preview-lines' },
         line('Bank + wallet now', p.bankCents, false),
-        line(`Pay still coming (to ${shortDate(snap.cycle.end)})`, p.payCents),
-        line('Owed to the card', -p.owedCents))),
-    h('p', { class: 'small muted' }, 'Next, add payments you already know about (school fees, rent, bills) on the Plan tab. They are set aside from "Left to spend" straight away.'),
+        line(`Pay coming until the ${billLabel(snap.untilDue.due)}`, p.payCents + snap.untilDue.payCents),
+        line('Owed to the card', -p.owedCents)),
+      h('div', { class: 'glance-sub', style: { marginTop: '6px' } },
+        `This cycle (to ${shortDate(snap.cycle.end)}): `,
+        h('strong', { id: 'preview-lts', dataset: { cents: String(snap.lts.cents) } }, peso(snap.lts.cents)))),
+    h('p', { class: 'small muted' }, 'Next, add payments you already know about (school fees, rent, bills) on the Plan tab. They are set aside straight away.'),
     nav(3, 'Start using the app'));
     return form;
   }

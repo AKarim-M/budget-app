@@ -79,7 +79,7 @@ async function run(label, S) {
       __t.fill(__t.field('Minimum due'), ${J(S.lastMin)});
       __t.btn('Next').click()`);
     await page.waitFor("document.querySelector('.preview')");
-    expectEq('setup preview', await page.eval("__t.text('.preview .glance-big')"), S.expect.afterWizard);
+    expectEq('setup preview (this cycle)', await page.eval("__t.text('#preview-lts')"), S.expect.afterWizard);
     await act("__t.btn('Start using the app').click()");
     await page.waitFor("__t.text('#lts-value') !== ''");
     expectEq('left to spend after setup', await lts(), S.expect.afterWizard);
@@ -130,10 +130,9 @@ async function run(label, S) {
       const n = Math.round(Number(String(t).replace(/[^\d.]/g, '')) * 100);
       return /^\s*[−-]/.test(t) ? -n : n;
     };
-    // The big number shows "Over by ₱X" when below zero, so read its label too.
+    // This cycle's figure, with its sign (the screen shows the amount without one).
     const ltsCents = async () => {
-      const over = await page.eval("document.querySelector('.glance-main').classList.contains('over')");
-      return (over ? -1 : 1) * toCents(await lts());
+      return Number(await page.eval("document.getElementById('lts-value').dataset.cents"));
     };
     const ltsBefore = await ltsCents();
     const bankBefore = toCents(await page.eval("__t.text('#bank-value')"));

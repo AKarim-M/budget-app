@@ -327,6 +327,22 @@ test('until the next bill adds the pay that lands between the cut-off and the du
   assert.equal(s.untilDue.cents, s.lts.cents + 3000000);
 });
 
+test('the weekly pace spreads what is left until the next bill over the weeks remaining', () => {
+  const s = compute(household().records, { today: '2026-10-15' }); // 53 days to the Dec 7 bill
+  assert.equal(s.untilDue.daysLeft, 53);
+  assert.equal(s.untilDue.weeklyCents, Math.floor((s.untilDue.cents * 7) / 53));
+  const later = compute(household().records, { today: '2026-11-14' }); // 23 days to Dec 7
+  assert.equal(later.untilDue.daysLeft, 23);
+  assert.equal(later.untilDue.weeklyCents, Math.floor((later.untilDue.cents * 7) / 23));
+});
+
+test('there is no weekly pace when the next bill is not covered', () => {
+  const h = household({ bankCents: 0, openingBills: [{ stmt: '2026-10', cents: 99999900 }] });
+  const s = compute(h.records, { today: '2026-10-15' });
+  assert.ok(s.untilDue.cents < 0);
+  assert.equal(s.untilDue.weeklyCents, 0);
+});
+
 test('until the next bill takes off what is planned after the cut-off, up to the due date only', () => {
   const plain = compute(household().records, { today: '2026-10-15' });
   const h = household();
