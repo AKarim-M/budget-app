@@ -78,6 +78,7 @@ export async function openPage(port, { width = 412, height = 915, dark = false }
 
   const page = {
     errors,
+    send,
     setDark,
     async installabilityErrors() {
       const r = await send('Page.getInstallabilityErrors');
