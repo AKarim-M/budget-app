@@ -1,7 +1,7 @@
 // Service worker: keeps the whole app on the phone so it opens and works offline.
 // Bump VERSION on every release so phones pick up the new files.
 
-const VERSION = '2026.10.15-4';
+const VERSION = '2026.10.15-5';
 const PREFIX = 'hb-shell-';
 const CACHE = PREFIX + VERSION;
 const SHELL = [

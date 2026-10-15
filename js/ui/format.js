@@ -24,6 +24,15 @@ export function monthLabel(ym) {
   return `${MONTH[m - 1]} ${y}`;
 }
 
+const PERSON_COLORS = ['#2f8f63', '#3b78c2', '#c2593f', '#8a5cc2', '#c98a16', '#16928a', '#c2417a', '#6b7a8f'];
+
+/** The same name always gets the same colour, on every device. */
+export function personColor(name) {
+  let hash = 0;
+  for (const ch of String(name)) hash = (hash * 31 + ch.codePointAt(0)) % 1_000_003;
+  return PERSON_COLORS[hash % PERSON_COLORS.length];
+}
+
 export function ordinal(n) {
   const s = n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th';
   return `${n}${s}`;

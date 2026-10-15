@@ -21,6 +21,8 @@ import { statusPill, openJoin, openConnect } from './ui/sync-panel.js';
 import { toast } from './ui/overlay.js';
 
 const ROUTES = ['home', 'plan', 'spending', 'settings'];
+/** Phone status-bar colour for each theme. */
+const THEME_COLORS = { light: '#2d6a4f', dim: '#181a18', black: '#000000', ocean: '#1d6672', terracotta: '#964429', auto: '#2d6a4f' };
 const STORAGE_KEYS = ['hb1.db', 'hb1.device', 'hb1.sync'];
 const params = new URLSearchParams(location.search);
 const demo = params.get('demo');
@@ -157,10 +159,14 @@ async function main() {
   }
 
   function applyTheme() {
-    const pref = store.device.get().theme ?? 'auto';
-    const dark = pref === 'dim' || (pref === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    document.documentElement.dataset.theme = dark ? 'dim' : 'light';
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#181a18' : '#2d6a4f');
+    const dev = store.device.get();
+    const pref = THEME_COLORS[dev.theme] ? dev.theme : 'auto';
+    const theme = pref === 'auto'
+      ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dim' : 'light')
+      : pref;
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.dataset.text = dev.textSize === 'large' ? 'large' : '';
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', THEME_COLORS[theme]);
   }
 
   function showBanner() {

@@ -1,6 +1,6 @@
 // Spending: one card cycle at a time, by item, by category, and by person.
 import { h, fill } from './dom.js';
-import { peso, range } from './format.js';
+import { peso, range, personColor } from './format.js';
 import { spendRow } from './actions.js';
 import { spendingForCycle } from '../engine.js';
 import { shiftStmt } from '../cycles.js';
@@ -65,7 +65,9 @@ export function mountSpending(el, app) {
         class: `chip${person === key ? ' active' : ''}`,
         'aria-pressed': person === key ? 'true' : 'false',
         onclick: () => { person = key; render(); },
-      }, label))
+      },
+      key === 'all' ? null : h('span', { class: 'who-dot', style: { background: personColor(key) }, 'aria-hidden': 'true' }),
+      label))
       : null);
     people.hidden = v.byPerson.length <= 1;
 

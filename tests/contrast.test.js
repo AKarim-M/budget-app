@@ -8,6 +8,7 @@ const css = readFileSync('css/app.css', 'utf8');
 
 function tokens(selector) {
   const start = css.indexOf(`${selector} {`);
+  if (start < 0) throw new Error(`No colour tokens for ${selector}`);
   const block = css.slice(start, css.indexOf('}', start));
   return Object.fromEntries([...block.matchAll(/--([\w-]+):\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]));
 }
@@ -48,16 +49,35 @@ const PAIRS = [
   ['cash-accent', 'cash-bg'],
   ['warn', 'warn-bg'], ['warn', 'surface'],
   ['danger', 'danger-bg'], ['danger', 'surface'],
+  ['on-primary', 'primary'],
+  ['good', 'good-bg'], ['good', 'surface'],
 ];
 
-for (const [name, selector] of [['light', ':root'], ['dim', '[data-theme="dim"]']]) {
+/** Follow var(--x) references to the colour they name. */
+function resolve(t, name) {
+  let v = t[name];
+  for (let i = 0; i < 5 && /^var\(--([\w-]+)\)$/.test(v ?? ''); i += 1) v = t[/^var\(--([\w-]+)\)$/.exec(v)[1]];
+  if (!v) throw new Error(`No value for --${name}`);
+  return v;
+}
+
+const THEMES = [
+  ['warm paper', ':root'],
+  ['soft matte (dim)', '[data-theme="dim"]'],
+  ['true black', '[data-theme="black"]'],
+  ['ocean', '[data-theme="ocean"]'],
+  ['terracotta', '[data-theme="terracotta"]'],
+];
+
+for (const [name, selector] of THEMES) {
   test(`${name} theme text is readable everywhere it is used`, () => {
     const t = { ...tokens(':root'), ...tokens(selector) };
     const surface = parse(t.surface).slice(0, 3);
     const failures = [];
     for (const [fg, bg] of PAIRS) {
-      const back = parse(t[bg])[3] < 1 ? over(t[bg], t.surface) : parse(t[bg]).slice(0, 3);
-      const front = parse(t[fg])[3] < 1 ? over(t[fg], t.surface) : parse(t[fg]).slice(0, 3);
+      const [fgc, bgc] = [resolve(t, fg), resolve(t, bg)];
+      const back = parse(bgc)[3] < 1 ? over(bgc, t.surface) : parse(bgc).slice(0, 3);
+      const front = parse(fgc)[3] < 1 ? over(fgc, t.surface) : parse(fgc).slice(0, 3);
       const r = ratio(front, back);
       if (r < 4.5) failures.push(`${fg} on ${bg}: ${r.toFixed(2)}:1`);
     }

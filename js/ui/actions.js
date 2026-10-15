@@ -5,7 +5,7 @@ import {
   field, textInput, dateInput, moneyInput, select, segmented,
   readMoney, readOptionalMoney, showError, clearErrors,
 } from './forms.js';
-import { peso, dayLabel, shortDate, billLabel, range, ordinal } from './format.js';
+import { peso, dayLabel, shortDate, billLabel, range, ordinal, personColor } from './format.js';
 import { formatInput } from '../money.js';
 import { isYMD, minYMD, ymOf } from '../dates.js';
 import { payEntryAt } from '../cycles.js';
@@ -27,6 +27,13 @@ function readDate(input, { max } = {}) {
 
 // ---------- rows ----------
 
+/** A person's name with their colour dot. */
+export function personTag(name) {
+  return h('span', { class: 'who' },
+    h('span', { class: 'who-dot', style: { background: personColor(name) }, 'aria-hidden': 'true' }),
+    name);
+}
+
 export function spendRow(rec, app) {
   const cat = app.snap.categories.find((c) => c.id === rec.categoryId);
   return h('div', { class: 'row' },
@@ -35,7 +42,8 @@ export function spendRow(rec, app) {
         h('span', { class: `tag tag-${rec.method}` }, rec.method === 'card' ? '💳 Card' : '💵 Cash'),
         rec.item),
       h('div', { class: 'row-meta' },
-        `${cat ? `${cat.icon} ${cat.name}` : 'Other'} · ${dayLabel(rec.date)} · ${rec.by}`)),
+        `${cat ? `${cat.icon} ${cat.name}` : 'Other'} · ${dayLabel(rec.date)} · `,
+        personTag(rec.by))),
     h('div', { class: 'row-end' },
       h('strong', { class: 'num' }, peso(rec.amountCents)),
       h('button', {

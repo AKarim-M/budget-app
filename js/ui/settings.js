@@ -12,7 +12,15 @@ import { installApp } from '../pwa.js';
 import { syncRows } from './sync-panel.js';
 
 const PALETTE = ['#7c4d3a', '#2b5b84', '#6d4c7d', '#b45309', '#2d6a4f', '#c2593f', '#52606d'];
-const THEMES = { light: 'Warm paper', dim: 'Soft matte (dim)', auto: 'Same as this phone' };
+const THEMES = {
+  light: 'Warm paper',
+  ocean: 'Ocean',
+  terracotta: 'Terracotta',
+  dim: 'Soft matte (dim)',
+  black: 'True black',
+  auto: 'Same as this phone (warm paper / soft matte)',
+};
+const TEXT_SIZES = { normal: 'Normal', large: 'Bigger' };
 const MONTH_RE = /^\d{4}-\d{2}$/;
 const days = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
 
@@ -57,6 +65,20 @@ function editTheme(app) {
         close();
       },
     }, seg.el, h('div', { style: { height: '12px' } }), submitBtn('Apply')));
+  });
+}
+
+function editTextSize(app) {
+  openSheet('Text size', (body, close) => {
+    const seg = segmented('text-size', Object.entries(TEXT_SIZES), app.store.device.get().textSize === 'large' ? 'large' : 'normal');
+    body.append(h('form', {
+      novalidate: true,
+      onsubmit: (e) => {
+        e.preventDefault();
+        app.store.device.set({ textSize: seg.value() });
+        close();
+      },
+    }, h('p', { class: 'section-note' }, 'Bigger text is easier to read; this device only.'), seg.el, h('div', { style: { height: '12px' } }), submitBtn('Apply')));
   });
 }
 
@@ -279,7 +301,8 @@ export function mountSettings(el, app) {
       const pwa = app.pwa ?? {};
       fill(device,
         setting('Your name', dev.userName || 'Not set', smallBtn('Edit', () => editName(app))),
-        setting('Theme', THEMES[dev.theme ?? 'auto'], smallBtn('Change', () => editTheme(app))),
+        setting('Theme', THEMES[dev.theme] ?? THEMES.auto, smallBtn('Change', () => editTheme(app))),
+        setting('Text size', TEXT_SIZES[dev.textSize] ?? TEXT_SIZES.normal, smallBtn('Change', () => editTextSize(app))),
         pwa.installPrompt
           ? setting('Install on this device', 'Adds the app to your home screen. It also works offline.', smallBtn('Install', () => installApp(app)))
           : null,
